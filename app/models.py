@@ -4,6 +4,7 @@ class Department(models.Model):
     name = models.CharField(max_length=100)
     capacity = models.IntegerField(default=10)
     current_patients = models.IntegerField(default=0)
+    status=models.CharField(max_length=255,default="Free")
 
     def __str__(self):
         return self.name
@@ -22,4 +23,13 @@ class Registration(models.Model):
 
     def __str__(self):
         return self.name
+
+
+
+
+
+
+
+
+
 

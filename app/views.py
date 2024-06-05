@@ -1,61 +1,108 @@
 from django.shortcuts import render, redirect
 from .models import Registration, Department
-from django.db.models import F
 from django.shortcuts import get_object_or_404
 
-ALL_DEPARTMENTS=[
-    "Anthropology","Vitals","Blood Investigations","Scanning and X-Rays","Psychology","Preventive Oncology","Dental","Nutrition","Phsysiotherapy","Physician","Any Specialist"
-]
+
+
+
+
+
+
+
 
 def home(request):
     return render(request, 'home.html')
 def register_view(request):
     if request.method == 'POST':
-        name = request.POST.get('name')
-        age = request.POST.get('age')
-        mobile_number = request.POST.get('mobile_number')
-        address = request.POST.get('address')
-        coord_facilitator = request.POST.get('coord_facilitator')
-        meals = request.POST.get('meals')
+        try:
+            name = request.POST.get('name')
+            age = request.POST.get('age')
+            mobile_number = request.POST.get('mobile_number')
+            address = request.POST.get('address')
+            coord_facilitator = request.POST.get('coord_facilitator')
+            meals = request.POST.get('meals')
 
-        # Create a new instance of the Registration model
-        patient = Registration.objects.create(
-            name=name,
-            age=age,
-            mobile_number=mobile_number,
-            address=address,
-            coord_facilitator=coord_facilitator,
-            meals=meals,
-            status="Pending",
+            # Create a new instance of the Registration model
+            patient = Registration.objects.create(
+                name=name,
+                age=age,
+                mobile_number=mobile_number,
+                address=address,
+                coord_facilitator=coord_facilitator,
+                meals=meals,
+                status="Pending",
 
-        )
+            )
 
-        # Find an available department
-        department = get_available_department()
+            # Find an available department
+            department = get_available_department()
 
-        if department:
+            if department:
 
-            patient.assigned_department = department
-            patient.current_department=department.name
-            patient.save()
-            department.current_patients += 1
-            department.save()
-            return redirect('patient_detail', pk=patient.id)
-        else:
-            # If no department is available, show a message
-            return render(request, 'no_department_available.html')
+                patient.assigned_department = department
+                patient.current_department=department.name
+                patient.save()
+
+
+
+                department.current_patients += 1
+
+                department.save()
+                return redirect('patient_detail', pk=patient.id)
+            else:
+                department_obj=get_object_or_404(Department,"Anthropology")
+                patient.assigned_department = department_obj
+                patient.current_department = department_obj.name
+                patient.save()
+
+
+
+                department.current_patients += 1
+
+                department.save()
+                return redirect('patient_detail', pk=patient.id)
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
 
     return render(request, 'home.html')
-def get_available_department(exclude_departments=None):
-    if exclude_departments is None:
-        exclude_departments = []
-    assigned_department_ids = Registration.objects.exclude(assigned_department=None).values_list('assigned_department_id', flat=True)
-    available_departments = Department.objects.exclude(id__in=exclude_departments + list(assigned_department_ids)).filter(current_patients__lt=F('capacity'))
-    if available_departments.exists():
-        print("available_departments.first()",available_departments.first().name,type(available_departments.first().name))
-        return available_departments.first()
-    else:
+
+
+def get_available_department():
+    try:
+        def get_all_departments():
+            result = []
+            obj = Department.objects.all()
+            for i in obj:
+                result.append(i.name)
+            print("Results", result)
+            return result
+
+        def get_all_busydepartments():
+            result = []
+            obj = Registration.objects.all()
+            for i in obj:
+                result.append(i.current_department)
+            print("Busy Departments===>", result)
+            return result
+
+        def get_free_departments():
+            result = [department for department in ALL_DEPARTMENTS if department not in BUSY_DEPARTMENTS]
+            print("THE FREE DEPARTMENTS", result)
+            return result
+
+        ALL_DEPARTMENTS = get_all_departments()
+
+        BUSY_DEPARTMENTS = get_all_busydepartments()
+        GET_FREE_DEPARTMENTS=get_free_departments()
+        obj=get_object_or_404(Department,name=GET_FREE_DEPARTMENTS[0])
+        return obj
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         return None
+
+
 def success(request):
     return render(request, 'success.html')
 def medicals(request, pk):
@@ -112,20 +159,38 @@ def department_patient_list(request):
 
 
 
-def update_status(request, pk):
+from django.http import Http404
+
+from django.http import Http404
+from django.db import transaction
+
+
+
+from django.http import Http404
+
+def update_status(request, pk, department):
     if request.method == 'POST':
-        patient = get_object_or_404(Registration, id=pk)
-        patient.status = 'Completed'
-        current_department=patient.current_department
-        print("current_department",current_department)
-        current_department_index=ALL_DEPARTMENTS.index(current_department)
-        print("current_department_index",current_department_index)
-        final_current_department_index=current_department_index+1
-        print("final_current_department_index",final_current_department_index)
-        patient.current_department=ALL_DEPARTMENTS[final_current_department_index]
-        patient.save()
+        print("the patient id is", pk)
+        print("tHE department id is", department)
+        patient_obj = get_object_or_404(Registration, id=pk)
+        department_obj = get_object_or_404(Department, id=department)
+
+
+
+        next_department_obj = Department.objects.filter(id__gt=department).order_by('id').first()
+        if not next_department_obj:
+            next_department_obj = Department.objects.order_by('id').first()
+
+        patient_obj.assigned_department = next_department_obj
+        patient_obj.current_department = next_department_obj.name
+        patient_obj.save()
+
         return redirect('department_patient_list')
     else:
         return redirect('home')
+
+
+
+
 
 

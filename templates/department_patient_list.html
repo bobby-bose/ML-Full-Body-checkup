@@ -36,7 +36,7 @@
                             <p>Age: {{ patient.age }}</p>
                         </div>
                         <!-- Add more patient details if needed -->
-                        <form action="{% url 'update_status' pk=patient.id %}" method="post">
+                        <form action="{% url 'update_status' pk=patient.id department=department.id %}" method="post">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-success">Completed</button>
                         </form>
