@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register Page</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Roboto', sans-serif;
+        }
+        .form-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        .form-title {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .btn-custom {
+            width: 100%;
+            background-color: #007bff;
+            color: #ffffff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h3 class="form-title">Register Page</h3>
+            <form action="{% url 'registration' %}" method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" class="form-control" name="name" id="name" required value="Bobby1">
+                </div>
+                <div class="form-group">
+                    <label for="age">Age:</label>
+                    <input type="number" class="form-control" name="age" id="age" required value="23">
+                </div>
+                <div class="form-group">
+                    <label for="mobile_number">Mobile Number:</label>
+                    <input type="tel" class="form-control" name="mobile_number" id="mobile_number" required value="7012085349">
+                </div>
+                <div class="form-group">
+                    <label for="address">Address:</label>
+                    <textarea class="form-control" name="address" id="address" rows="3" required >gggffgffgfg</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="coord_facilitator">Coordination Facilitator:</label>
+                    <select class="form-control" name="coord_facilitator" id="coord_facilitator" required>
+                        <option value="Neha">Neha</option>
+                        <option value="Sarang">Sarang</option>
+                        <option value="Bobby">Bobby</option>
+                        <option value="Jithu">Jithu</option>
+                        <!-- Add more options as needed -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="meals">Meals:</label>
+                    <select class="form-control" name="meals" id="meals" required>
+                        <option value="Chicken,Mutton,Fish">Chicken, Mutton, Fish</option>
+                        <option value="Rice,Ghee,Curd">Rice, Ghee, Curd</option>
+                        <option value="Oats">Oats</option>
+                        <!-- Add more options as needed -->
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-custom">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

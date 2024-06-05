@@ -1,0 +1,77 @@
+<!-- patient_details.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Details</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <style>
+        /* Custom styles */
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .detail-item {
+            margin-bottom: 10px;
+        }
+        .detail-label {
+            font-weight: bold;
+            width: 150px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Patient Details</h1>
+    <div class="detail-item">
+        <span class="detail-label">Name:</span>
+        {{ name }}
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Age:</span>
+        {{ age }}
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Mobile Number:</span>
+        {{ mobile_number }}
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Address:</span>
+        {{ address }}
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Coordinator:</span>
+        {{ coord_facilitator }}
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Meals:</span>
+        {{ meals }}
+    </div>
+    <div class="detail-item">
+        <span class="detail-label">Current Department:</span>
+        {{ current_department }}
+    </div>
+</div>
+
+<!-- Bootstrap JS and jQuery (optional) -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>

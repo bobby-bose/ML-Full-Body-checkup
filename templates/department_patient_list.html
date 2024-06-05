@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Department and Patient List</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Add custom CSS for completed patients */
+        .completed-patient {
+            background-color: red;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="mt-4 mb-4">Departments</h1>
+
+    <!-- Iterate over each department and patients -->
+    {% for department, patients in department_patient_mapping.items %}
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white">
+            <h3>{{ department.name }}</h3>
+        </div>
+        <div class="card-body">
+            <ul class="list-group">
+                <!-- Iterate over patients of the current department -->
+                {% for patient in patients %}
+                <li class="list-group-item {% if patient.status == 'completed' %} completed-patient {% endif %}">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5>{{ patient.name }}</h5>
+                            <p>Age: {{ patient.age }}</p>
+                        </div>
+                        <!-- Add more patient details if needed -->
+                        <form action="{% url 'update_status' pk=patient.id %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">Completed</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>
