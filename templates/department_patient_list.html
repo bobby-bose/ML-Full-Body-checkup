@@ -7,8 +7,16 @@
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Add custom CSS for completed patients */
+        /* Add custom CSS for patient statuses */
         .completed-patient {
+            background-color: red;
+            color: white;
+        }
+        .progressing-patient {
+            background-color: green;
+            color: white;
+        }
+        .waiting-patient {
             background-color: red;
             color: white;
         }
@@ -29,17 +37,21 @@
             <ul class="list-group">
                 <!-- Iterate over patients of the current department -->
                 {% for patient in patients %}
-                <li class="list-group-item {% if patient.status == 'completed' %} completed-patient {% endif %}">
+                <li class="list-group-item {% if patient.status == 'Progressing' %} progressing-patient {% elif patient.status == 'Waiting' %} waiting-patient {% endif %}">
                     <div class="d-flex justify-content-between">
                         <div>
                             <h5>{{ patient.name }}</h5>
                             <p>Age: {{ patient.age }}</p>
                         </div>
                         <!-- Add more patient details if needed -->
+                        {% if patient.status == 'Progressing' %}
                         <form action="{% url 'update_status' pk=patient.id department=department.id %}" method="post">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-success">Completed</button>
                         </form>
+                        {% elif patient.status == 'Waiting' %}
+                        <button class="btn btn-secondary" disabled>Waiting</button>
+                        {% endif %}
                     </div>
                 </li>
                 {% endfor %}

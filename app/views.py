@@ -2,14 +2,6 @@ from django.shortcuts import render, redirect
 from .models import Registration, Department
 from django.shortcuts import get_object_or_404
 
-
-
-
-
-
-
-
-
 def home(request):
     return render(request, 'home.html')
 def register_view(request):
@@ -30,7 +22,7 @@ def register_view(request):
                 address=address,
                 coord_facilitator=coord_facilitator,
                 meals=meals,
-                status="Pending",
+                status="Progressing",
 
             )
 
@@ -106,7 +98,6 @@ def get_available_department():
 def success(request):
     return render(request, 'success.html')
 def medicals(request, pk):
-    # Retrieve the patient object
     patient = get_object_or_404(Registration, id=pk)
 
     context = {
@@ -156,17 +147,11 @@ def department_patient_list(request):
     }
     print("department_patient_mapping",department_patient_mapping)
     return render(request, 'department_patient_list.html', context)
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Registration, Department
 
-
-
-from django.http import Http404
-
-from django.http import Http404
-from django.db import transaction
-
-
-
-from django.http import Http404
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Registration, Department
 
 def update_status(request, pk, department):
     if request.method == 'POST':
@@ -174,20 +159,33 @@ def update_status(request, pk, department):
         print("tHE department id is", department)
         patient_obj = get_object_or_404(Registration, id=pk)
         department_obj = get_object_or_404(Department, id=department)
-
-
-
         next_department_obj = Department.objects.filter(id__gt=department).order_by('id').first()
+
         if not next_department_obj:
             next_department_obj = Department.objects.order_by('id').first()
 
-        patient_obj.assigned_department = next_department_obj
-        patient_obj.current_department = next_department_obj.name
+        # Check if any other patient has the next department as current_department and assigned_department
+        if Registration.objects.filter(current_department=next_department_obj.name, assigned_department=next_department_obj).exists():
+            patient_obj.status = "Waiting"
+            patient_obj.assigned_department = next_department_obj
+            patient_obj.current_department = next_department_obj.name
+        else:
+            patient_obj.assigned_department = next_department_obj
+            patient_obj.current_department = next_department_obj.name
+
         patient_obj.save()
+
+        # Update the status of the next patient waiting for the current department
+        next_waiting_patient = Registration.objects.filter(current_department=department_obj.name, status="Waiting").first()
+        if next_waiting_patient:
+            next_waiting_patient.status = "Progressing"
+            next_waiting_patient.save()
 
         return redirect('department_patient_list')
     else:
         return redirect('home')
+
+
 
 
 
