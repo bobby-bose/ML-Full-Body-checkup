@@ -1,7 +1,5 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import Registration, Department
-from django.shortcuts import get_object_or_404
-
 def home(request):
     return render(request, 'home.html')
 def register_view(request):
@@ -23,22 +21,13 @@ def register_view(request):
                 coord_facilitator=coord_facilitator,
                 meals=meals,
                 status="Progressing",
-
             )
-
-            # Find an available department
             department = get_available_department()
-
             if department:
-
                 patient.assigned_department = department
                 patient.current_department=department.name
                 patient.save()
-
-
-
                 department.current_patients += 1
-
                 department.save()
                 return redirect('patient_detail', pk=patient.id)
             else:
@@ -46,67 +35,23 @@ def register_view(request):
                 patient.assigned_department = department_obj
                 patient.current_department = department_obj.name
                 patient.save()
-
-
-
                 department.current_patients += 1
-
                 department.save()
                 return redirect('patient_detail', pk=patient.id)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return None
-
     return render(request, 'home.html')
-
-
-def get_available_department():
-    try:
-        def get_all_departments():
-            result = []
-            obj = Department.objects.all()
-            for i in obj:
-                result.append(i.name)
-            print("Results", result)
-            return result
-
-        def get_all_busydepartments():
-            result = []
-            obj = Registration.objects.all()
-            for i in obj:
-                result.append(i.current_department)
-            print("Busy Departments===>", result)
-            return result
-
-        def get_free_departments():
-            result = [department for department in ALL_DEPARTMENTS if department not in BUSY_DEPARTMENTS]
-            print("THE FREE DEPARTMENTS", result)
-            return result
-
-        ALL_DEPARTMENTS = get_all_departments()
-
-        BUSY_DEPARTMENTS = get_all_busydepartments()
-        GET_FREE_DEPARTMENTS=get_free_departments()
-        obj=get_object_or_404(Department,name=GET_FREE_DEPARTMENTS[0])
-        return obj
-
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return None
-
 
 def success(request):
     return render(request, 'success.html')
 def medicals(request, pk):
     patient = get_object_or_404(Registration, id=pk)
-
     context = {
         "patient": patient
     }
-
     # Find an available department
     department = get_available_department()
-
     if department:
         # Assign the patient to the department
         patient.assigned_department = department
@@ -117,7 +62,6 @@ def medicals(request, pk):
     else:
         # If no department is available, show a message
         return render(request, 'no_department_available.html')
-
     return render(request, 'medicals.html', context)
 
 def patient_detail(request,pk):
@@ -132,7 +76,6 @@ def patient_detail(request,pk):
 "coord_facilitator": obj.coord_facilitator,
 "meals": obj.meals,
         "current_department":obj.assigned_department
-
     }
     return render(request, 'patient_details.html', context)
 
@@ -147,40 +90,46 @@ def department_patient_list(request):
     }
     print("department_patient_mapping",department_patient_mapping)
     return render(request, 'department_patient_list.html', context)
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import Registration, Department
 
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import Registration, Department
+def get_available_department(exclude_departments=[]):
+    try:
+        all_departments = Department.objects.all()
+        busy_departments = Registration.objects.values_list('current_department', flat=True).distinct()
+        free_departments = [department for department in all_departments if department.name not in busy_departments and department.name not in exclude_departments]
+        if free_departments:
+            return free_departments[0]
+        else:
+            return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
 
 def update_status(request, pk, department):
     if request.method == 'POST':
-        print("the patient id is", pk)
-        print("tHE department id is", department)
         patient_obj = get_object_or_404(Registration, id=pk)
         department_obj = get_object_or_404(Department, id=department)
         next_department_obj = Department.objects.filter(id__gt=department).order_by('id').first()
-
         if not next_department_obj:
             next_department_obj = Department.objects.order_by('id').first()
-
-        # Check if any other patient has the next department as current_department and assigned_department
         if Registration.objects.filter(current_department=next_department_obj.name, assigned_department=next_department_obj).exists():
-            patient_obj.status = "Waiting"
-            patient_obj.assigned_department = next_department_obj
-            patient_obj.current_department = next_department_obj.name
+            next_free_department = get_available_department(exclude_departments=[next_department_obj.name])
+            if next_free_department:
+                patient_obj.assigned_department = next_free_department
+                patient_obj.current_department = next_free_department.name
+                patient_obj.status = "Progressing"
+            else:
+                patient_obj.assigned_department = next_department_obj
+                patient_obj.current_department = next_department_obj.name
+                patient_obj.status = "Waiting"
         else:
             patient_obj.assigned_department = next_department_obj
             patient_obj.current_department = next_department_obj.name
-
+            patient_obj.status = "Progressing"
         patient_obj.save()
-
-        # Update the status of the next patient waiting for the current department
         next_waiting_patient = Registration.objects.filter(current_department=department_obj.name, status="Waiting").first()
         if next_waiting_patient:
             next_waiting_patient.status = "Progressing"
             next_waiting_patient.save()
-
         return redirect('department_patient_list')
     else:
         return redirect('home')
