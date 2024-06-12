@@ -7,18 +7,17 @@
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Add custom CSS for patient statuses */
-        .completed-patient {
-            background-color: red;
-            color: white;
+        .btn-custom {
+            margin-right: 10px; /* Add spacing between buttons */
+            border: 3px solid red; /* Red border with 3px thickness */
         }
-        .progressing-patient {
-            background-color: green;
-            color: white;
+        .btn-group {
+            justify-content: space-between; /* Distribute buttons evenly */
+            width: 100%; /* Make sure the group spans the full width */
         }
-        .waiting-patient {
-            background-color: red;
-            color: white;
+        .btn-group a {
+            flex-grow: 1; /* Make buttons take equal space */
+            text-align: center; /* Center the button text */
         }
     </style>
 </head>
@@ -26,6 +25,15 @@
 
 <div class="container">
     <h1 class="mt-4 mb-4">Departments</h1>
+
+    <!-- Buttons for packages -->
+    <div class="btn-group mb-4" role="group">
+        {% for package in packages %}
+        <a href="?package_id={{ package.id }}" class="btn btn-primary btn-custom {% if selected_package and selected_package.id == package.id %} active {% endif %}">
+            {{ package.name }}
+        </a>
+        {% endfor %}
+    </div>
 
     <!-- Iterate over each department and patients -->
     {% for department, patients in department_patient_mapping.items %}

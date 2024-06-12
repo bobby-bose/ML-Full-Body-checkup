@@ -63,6 +63,14 @@
                     </select>
                 </div>
                 <div class="form-group">
+                   <label for="chosen_package">Choose Package:</label>
+    <select name="chosen_package" id="chosen_package">
+        {% for package in oncurepackages %}
+            <option value="{{ package.id }}">{{ package.name }}</option>
+        {% endfor %}
+    </select>
+                </div>
+                <div class="form-group">
                     <label for="meals">Meals:</label>
                     <select class="form-control" name="meals" id="meals" required>
                         <option value="Chicken,Mutton,Fish">Chicken, Mutton, Fish</option>
