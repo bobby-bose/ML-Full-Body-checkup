@@ -238,36 +238,119 @@ def add_patient(request):
             print("ENTERED THE TRY METHODS")
             data = json.loads(request.body.decode('utf-8'))
             print("Received data:", data)  # Log received data for debugging
+            chosen_package_id = data.get('chosen_package')
+
+            chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
+            assigned_department=None
+            current_department=None
+
+            first_department = get_available_department_for_package(chosen_package)
+
+            assigned_department = first_department
+            current_department = first_department.name
+
+
+                # Record the entry into the department
+
+
+            # Ensure all required fields are present and log them
+            required_fields = ['name', 'age', 'contact_number', 'address', 'chosen_package']
+            for field in required_fields:
+                if field not in data:
+                    print(f"Missing required field: {field}")
+                    return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+
+            # Log all the received fields
+            for key, value in data.items():
+                print(f"{key}: {value}")
+
+
 
             patient = Patient(
                 name=data.get('name'),
                 age=data.get('age'),
                 mobile_number=data.get('contact_number'),
                 address=data.get('address'),
-                coord_facilitator=data.get('coord_facilitator', ''),  # Default to empty string if not provided
-                meals=data.get('meals', ''),  # Default to empty string if not provided
+                coord_facilitator_id=data.get('coord_facilitator', ''),  # Default to empty string if not provided
+                meals_id=data.get('meals', ''),  # Default to empty string if not provided
                 chosen_package_id=data.get('chosen_package'),  # Assuming the package ID is sent in the request
-                assigned_department_id=data.get('assigned_department'),
-                # Assuming the department ID is sent in the request
+                assigned_department=assigned_department,
                 status=data.get('status', ''),  # Default to empty string if not provided
-                current_department=data.get('current_department', '')  # Default to empty string if not provided
+                current_department=current_department  # Default to empty string if not provided
             )
             patient.save()
+            EnteredDepartment.objects.create(registration=patient, department=first_department)
             return JsonResponse({'message': 'Patient added successfully!'}, status=201)
         except Exception as e:
+            print(f"Error: {e}")  # Log the exception for debugging
             return JsonResponse({'error': str(e)}, status=400)
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+
 # Update View
-class PatientUpdateView(UpdateAPIView):
-    queryset = Patient.objects.all()
-    serializer_class = PatientSerializer
-    lookup_field = 'id'  # Assuming you're using 'id' as the lookup field
+def packages_list(request):
+    try:
+        obj=Oncurepackages.objects.all()
+        final=[]
+        for i in obj:
+            final.append({"id":i.id,"name":i.name})
+        print("The final list of the packages_list")
+        print(final)
+        return JsonResponse({'list': final}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-# Delete View
-class PatientDeleteView(DestroyAPIView):
-    queryset = Patient.objects.all()
-    serializer_class = PatientSerializer
-    lookup_field = 'id'  # Assuming you're using 'id' as the lookup field
+def coordinationfacilitator_list(request):
+    try:
+        obj=CoordinationFacilitators.objects.all()
+        final=[]
+        for i in obj:
+            final.append({"id":i.id,"name":i.name})
+        print("The final list of the coordination facilitator")
+        print(final)
+        return JsonResponse({'list': final}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
 
+def meals_list(request):
+    try:
+        obj=Meals.objects.all()
+        final=[]
+        for i in obj:
+            final.append({"id":i.id,"name":i.name})
+        print("The final list of the Meals")
+        print(final)
+        return JsonResponse({'list': final}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+
+@csrf_exempt
+def departments_list(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            chosen_package_id = data.get('chosenPackageId')
+            if not chosen_package_id:
+                return JsonResponse({'error': 'Package ID not provided'}, status=400)
+
+            print("THE DEPARTMENTS LIST IS ACTIVATED")
+            print("THE CHOSEN PACKAGE ID IS", chosen_package_id)
+            chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
+            departments = Department.objects.filter(oncurepackage=chosen_package)
+            departments_list = [{"id": dept.id, "name": dept.name} for dept in departments]
+            print("The Department list is",departments_list)
+            return JsonResponse({'list': departments_list}, status=200)
+        except Oncurepackages.DoesNotExist:
+            return JsonResponse({'error': 'Package not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid HTTP method'}, status=405)

@@ -14,6 +14,8 @@ path('remaining_departments/', remaining_departments, name='remaining_department
     path('api/patients/', PatientListView.as_view(), name='patient-list'),
     path('api/patients/<int:id>/', PatientDetailView.as_view(), name='patient-detail'),
     path('api/patients/add/', add_patient, name='add_patient'),
-    path('api/patients/update/<int:id>/', PatientUpdateView.as_view(), name='patient-update'),
-    path('api/patients/delete/<int:id>/', PatientDeleteView.as_view(), name='patient-delete'),
+path('api/packages/list/', packages_list, name='packages_list'),
+path('api/coordinationfacilitator/list/', coordinationfacilitator_list, name='coordinationfacilitator_list'),
+path('api/meals/list/', meals_list, name='meals_list'),
+path('api/departments/list/', departments_list, name='departments_list'),
 ]
