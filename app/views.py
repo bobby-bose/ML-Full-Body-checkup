@@ -9,11 +9,7 @@ from django.http import JsonResponse
 def home(request):
     return render(request, 'home.html')
 
-def get_available_department_for_package(package):
-    departments = Department.objects.filter(package=package)
-    for department in departments:
-        if not department.current_patient:  # Assuming each department has a `current_patient` field
-            return department
+
     return None
 def register_view(request):
     if request.method == 'POST':
@@ -124,18 +120,7 @@ def department_patient_list(request):
     return render(request, 'department_patient_list.html', context)
 
 
-def get_available_department_for_package(package):
-    try:
-        all_departments = Department.objects.filter(oncurepackage=package)
-        busy_departments = Patient.objects.values_list('current_department', flat=True).distinct()
-        free_departments = [department for department in all_departments if department.name not in busy_departments]
-        if free_departments:
-            return free_departments[0]
-        else:
-            return None
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return None
+
 
 
 from .models import EnteredDepartment
@@ -229,29 +214,18 @@ class PatientDetailView(RetrieveAPIView):
     serializer_class = PatientSerializer
     lookup_field = 'id'  # Assuming you're using 'id' as the lookup field
 
-
 @csrf_exempt
 def add_patient(request):
     if request.method == 'POST':
-        print("ENTERED THE POST METHODS")
         try:
-            print("ENTERED THE TRY METHODS")
             data = json.loads(request.body.decode('utf-8'))
             print("Received data:", data)  # Log received data for debugging
+
             chosen_package_id = data.get('chosen_package')
+            if not chosen_package_id:
+                return JsonResponse({'error': 'Missing chosen_package field'}, status=400)
 
             chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
-            assigned_department=None
-            current_department=None
-
-            first_department = get_available_department_for_package(chosen_package)
-
-            assigned_department = first_department
-            current_department = first_department.name
-
-
-                # Record the entry into the department
-
 
             # Ensure all required fields are present and log them
             required_fields = ['name', 'age', 'contact_number', 'address', 'chosen_package']
@@ -264,7 +238,10 @@ def add_patient(request):
             for key, value in data.items():
                 print(f"{key}: {value}")
 
-
+            # Get the first available department for the chosen package
+            first_department = get_available_department_for_package(chosen_package)
+            if not first_department:
+                return JsonResponse({'error': 'No available department for the chosen package'}, status=400)
 
             patient = Patient(
                 name=data.get('name'),
@@ -273,19 +250,37 @@ def add_patient(request):
                 address=data.get('address'),
                 coord_facilitator_id=data.get('coord_facilitator', ''),  # Default to empty string if not provided
                 meals_id=data.get('meals', ''),  # Default to empty string if not provided
-                chosen_package_id=data.get('chosen_package'),  # Assuming the package ID is sent in the request
-                assigned_department=assigned_department,
-                status=data.get('status', ''),  # Default to empty string if not provided
-                current_department=current_department  # Default to empty string if not provided
+                chosen_package=chosen_package,  # Correctly assign the chosen package
+                assigned_department=first_department,
+                current_department=first_department.name,
+                status=data.get('status', 'Progressing')  # Default to 'Progressing' if not provided
             )
             patient.save()
+
+            # Record the entry into the department
             EnteredDepartment.objects.create(registration=patient, department=first_department)
+
             return JsonResponse({'message': 'Patient added successfully!'}, status=201)
+        except Oncurepackages.DoesNotExist:
+            return JsonResponse({'error': 'Chosen package not found'}, status=404)
         except Exception as e:
             print(f"Error: {e}")  # Log the exception for debugging
             return JsonResponse({'error': str(e)}, status=400)
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+def get_available_department_for_package(package):
+    try:
+        all_departments = Department.objects.filter(oncurepackage=package)
+        busy_departments = Patient.objects.values_list('current_department', flat=True).distinct()
+        free_departments = [department for department in all_departments if department.name not in busy_departments]
+        if free_departments:
+            return free_departments[0]
+        else:
+            return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
 
 
 # Update View
@@ -309,8 +304,8 @@ def coordinationfacilitator_list(request):
         final=[]
         for i in obj:
             final.append({"id":i.id,"name":i.name})
-        print("The final list of the coordination facilitator")
-        print(final)
+        # print("The final list of the coordination facilitator")
+        # print(final)
         return JsonResponse({'list': final}, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -323,8 +318,8 @@ def meals_list(request):
         final=[]
         for i in obj:
             final.append({"id":i.id,"name":i.name})
-        print("The final list of the Meals")
-        print(final)
+        # print("The final list of the Meals")
+        # print(final)
         return JsonResponse({'list': final}, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -337,20 +332,70 @@ def departments_list(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            chosen_package_id = data.get('chosenPackageId')
-            if not chosen_package_id:
-                return JsonResponse({'error': 'Package ID not provided'}, status=400)
-
+            patient_id = data.get('patientId')
+            print("THE PATIENT ID IS", patient_id)
+            if not patient_id:
+                return JsonResponse({'error': 'Patient ID not provided'}, status=400)
             print("THE DEPARTMENTS LIST IS ACTIVATED")
-            print("THE CHOSEN PACKAGE ID IS", chosen_package_id)
-            chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
+            current_patient = Patient.objects.get(id=patient_id)
+            chosen_package = current_patient.chosen_package
             departments = Department.objects.filter(oncurepackage=chosen_package)
             departments_list = [{"id": dept.id, "name": dept.name} for dept in departments]
-            print("The Department list is",departments_list)
+            print("The Department list is", departments_list)
             return JsonResponse({'list': departments_list}, status=200)
+        except Patient.DoesNotExist:
+            return JsonResponse({'error': 'Patient not found'}, status=404)
         except Oncurepackages.DoesNotExist:
             return JsonResponse({'error': 'Package not found'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
     else:
         return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+
+@csrf_exempt
+def get_patient_status(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            package_id = data.get('package_id')
+            department_id = data.get('department_id')
+
+            if not package_id or not department_id:
+                return JsonResponse({'error': 'Package ID or Department ID not provided'}, status=400)
+
+            package = Oncurepackages.objects.get(id=package_id)
+            department = Department.objects.get(id=department_id)
+
+            message = f"The patient is currently in {department.name} department of the {package.name} package."
+            print("MESSAGE",message)
+            return JsonResponse({'message': message}, status=200)
+        except Oncurepackages.DoesNotExist:
+            return JsonResponse({'error': 'Package not found'}, status=404)
+        except Department.DoesNotExist:
+            return JsonResponse({'error': 'Department not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+
+@csrf_exempt
+def get_current_patient_department(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            patient_id = data.get('id')
+            if not patient_id:
+                return JsonResponse({'error': 'Package ID or Department ID not provided'}, status=400)
+            patient=Patient.objects.get(id=patient_id)
+            patient_name=patient.name
+            current_department=patient.current_department
+            message = f"The patient {patient_name} is currently in {current_department}"
+            print("MESSAGE",message)
+            return JsonResponse({'currentid': current_department}, status=200)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)

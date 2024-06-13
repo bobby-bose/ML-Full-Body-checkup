@@ -18,4 +18,7 @@ path('api/packages/list/', packages_list, name='packages_list'),
 path('api/coordinationfacilitator/list/', coordinationfacilitator_list, name='coordinationfacilitator_list'),
 path('api/meals/list/', meals_list, name='meals_list'),
 path('api/departments/list/', departments_list, name='departments_list'),
+path('api/patient/status/', get_patient_status, name='get_patient_status'),
+
+path('api/departments/current/', get_current_patient_department, name='get_current_patient'),
 ]
