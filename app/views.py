@@ -9,54 +9,54 @@ from django.http import JsonResponse
 def home(request):
     return render(request, 'home.html')
 
-
-    return None
-def register_view(request):
-    if request.method == 'POST':
-        try:
-            name = request.POST.get('name')
-            age = request.POST.get('age')
-            mobile_number = request.POST.get('mobile_number')
-            address = request.POST.get('address')
-            coord_facilitator = request.POST.get('coord_facilitator')
-            meals = request.POST.get('meals')
-            chosen_package_id = request.POST.get('chosen_package')
-
-            # Get the chosen package
-            chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
-
-            # Create a new instance of the Patient model
-            patient = Patient.objects.create(
-                name=name,
-                age=age,
-                mobile_number=mobile_number,
-                address=address,
-                coord_facilitator=coord_facilitator,
-                meals=meals,
-                chosen_package=chosen_package,
-                status="Progressing",
-            )
-
-            # Record the entry into the first department of the chosen package
-            first_department = get_available_department_for_package(chosen_package)
-            if first_department:
-                patient.assigned_department = first_department
-                patient.current_department = first_department.name
-                patient.save()
-
-                # Record the entry into the department
-                EnteredDepartment.objects.create(registration=patient, department=first_department)
-
-                return redirect('patient_detail', pk=patient.id)
-            else:
-                # Handle case when no department is available
-                return HttpResponseServerError("No available department for the chosen package.")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            return HttpResponseServerError("An unexpected error occurred. Please try again later.")
-    else:
-        oncurepackages = Oncurepackages.objects.all()
-        return render(request, 'home.html', {'oncurepackages': oncurepackages})
+#
+#     return None
+# def register_view(request):
+#     if request.method == 'POST':
+#         try:
+#             name = request.POST.get('name')
+#             age = request.POST.get('age')
+#             mobile_number = request.POST.get('mobile_number')
+#             address = request.POST.get('address')
+#             coord_facilitator = request.POST.get('coord_facilitator')
+#             meals = request.POST.get('meals')
+#             chosen_package_id = request.POST.get('chosen_package')
+#
+#             # Get the chosen package
+#             chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
+#
+#             # Create a new instance of the Patient model
+#             patient = Patient.objects.create(
+#                 name=name,
+#                 age=age,
+#                 mobile_number=mobile_number,
+#                 address=address,
+#                 coord_facilitator=coord_facilitator,
+#                 meals=meals,
+#                 chosen_package=chosen_package,
+#                 status="Progressing",
+#             )
+#
+#             # Record the entry into the first department of the chosen package
+#             first_department = get_available_department_for_package(chosen_package)
+#             if first_department:
+#                 patient.assigned_department = first_department
+#                 patient.current_department = first_department.name
+#                 patient.save()
+#
+#                 # Record the entry into the department
+#                 EnteredDepartment.objects.create(registration=patient, department=first_department)
+#
+#                 return redirect('patient_detail', pk=patient.id)
+#             else:
+#                 # Handle case when no department is available
+#                 return HttpResponseServerError("No available department for the chosen package.")
+#         except Exception as e:
+#             print(f"An unexpected error occurred: {e}")
+#             return HttpResponseServerError("An unexpected error occurred. Please try again later.")
+#     else:
+#         oncurepackages = Oncurepackages.objects.all()
+#         return render(request, 'home.html', {'oncurepackages': oncurepackages})
 
 
 def success(request):
@@ -238,7 +238,7 @@ def add_patient(request):
             for key, value in data.items():
                 print(f"{key}: {value}")
 
-            # Get the first available department for the chosen package
+            # Get the first free department for the chosen package
             first_department = get_available_department_for_package(chosen_package)
             if not first_department:
                 return JsonResponse({'error': 'No available department for the chosen package'}, status=400)
@@ -275,7 +275,7 @@ def get_available_department_for_package(package):
         busy_departments = Patient.objects.values_list('current_department', flat=True).distinct()
         free_departments = [department for department in all_departments if department.name not in busy_departments]
         if free_departments:
-            return free_departments[0]
+            return free_departments[0]  # Return the first free department
         else:
             return None
     except Exception as e:
@@ -399,3 +399,68 @@ def get_current_patient_department(request):
             return JsonResponse({'error': str(e)}, status=400)
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def next_department(request):
+    if request.method == 'POST':
+        print("ENTERED THE POST METHOD OF NEXT_DEPARTMENT")
+        try:
+            data = json.loads(request.body)
+            patient_id = data.get('patientId')
+            chosen_package_id = data.get('chosenPackageId')
+            current_department_id = data.get('currentDepartmentId')
+            print("EACH OF THEM IS", patient_id, chosen_package_id, current_department_id)
+
+            # Fetch the patient
+            patient = Patient.objects.get(id=patient_id)
+            chosen_package = patient.chosen_package
+            print("The chosen package", chosen_package, type(chosen_package))
+
+            # Fetch the current department
+            try:
+                current_department = Department.objects.get(name=current_department_id)
+            except Department.DoesNotExist:
+                print(f"Department with ID {current_department_id} does not exist.")
+                return JsonResponse(
+                    {'success': False, 'message': f'Department with ID {current_department_id} not found'})
+
+            print("The current department", current_department, type(current_department))
+
+            # Fetch all departments of the chosen package
+            departments = Department.objects.filter(oncurepackage=chosen_package).order_by('id')
+            print("The departments", departments, type(departments))
+
+            # Find the index of the current department
+            current_index = list(departments).index(current_department)
+            print("The current_index", current_index, type(current_index))
+            print("REACHED CHECK 1")
+
+            # Find the next available department that is not already taken by another patient of the same package
+            next_department = None
+            for next_index in range(current_index + 1, len(departments)):
+                potential_next_department = departments[next_index]
+                if not Patient.objects.filter(assigned_department=potential_next_department,
+                                              chosen_package=chosen_package).exists():
+                    next_department = potential_next_department
+                    break
+
+            if next_department:
+                patient.current_department = next_department.name
+                patient.assigned_department = next_department
+                print("THE NEXT DEPARTMENT IS", next_department)
+                print("SUCCESSFULLY CHANGED THE DEPARTMENT")
+                patient.save()
+                EnteredDepartment.objects.create(registration=patient, department=next_department)
+                return JsonResponse({'success': True, 'nextDepartment': next_department.name})
+            else:
+                return JsonResponse({'success': False, 'message': 'No more available departments in the package'})
+
+        except Patient.DoesNotExist:
+            print(f"Patient with ID {patient_id} does not exist.")
+            return JsonResponse({'success': False, 'message': 'Patient not found'})
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+            return JsonResponse({'success': False, 'message': str(e)})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
