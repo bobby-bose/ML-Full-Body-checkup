@@ -179,40 +179,27 @@ def patient_department_history(request):
     return render(request, 'patient_department_history.html', {'patient_department_mapping': patient_department_mapping})
 
 
+from django.shortcuts import render
+
+
 def remaining_departments(request):
-    patients = Registration.objects.all()
-    all_departments = Department.objects.all()
+    patients = Patient.objects.all()
     patient_remaining_departments = {}
+
     for patient in patients:
-        entered_departments = EnteredDepartment.objects.filter(patient=patient).values_list('department__name',
-                                                                                            flat=True)
-        remaining_departments = [department for department in all_departments if
-                                 department.name not in entered_departments]
-        patient_remaining_departments[patient] = remaining_departments
+        if patient.chosen_package:
+            package_departments = Department.objects.filter(oncurepackage=patient.chosen_package)
+            entered_departments = EnteredDepartment.objects.filter(registration=patient).values_list('department__name',
+                                                                                                     flat=True)
+            remaining_departments = [department for department in package_departments if
+                                     department.name not in entered_departments]
+            patient_remaining_departments[patient] = remaining_departments
 
     context = {
         'patient_remaining_departments': patient_remaining_departments,
     }
     return render(request, 'remaining_departments.html', context)
 
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView
-from .models import Patient
-from .serializers import PatientSerializer
-
-class PatientListView(APIView):
-    def get(self, request):
-        patients = Patient.objects.all()
-        serializer = PatientSerializer(patients, many=True)
-        return Response(serializer.data)
-
-class PatientDetailView(RetrieveAPIView):
-    queryset = Patient.objects.all()
-    serializer_class = PatientSerializer
-    lookup_field = 'id'  # Assuming you're using 'id' as the lookup field
 
 @csrf_exempt
 def add_patient(request):
@@ -464,3 +451,104 @@ def next_department(request):
             return JsonResponse({'success': False, 'message': str(e)})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+@csrf_exempt
+def edit_patient(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            print("Received data:", data)  # Log received data for debugging
+
+            patient_id = data.get('patientId')
+
+
+            # Log all the received fields
+            for key, value in data.items():
+                print(f"{key}: {value}")
+
+            try:
+                patient = Patient.objects.get(id=patient_id)
+            except Patient.DoesNotExist:
+                return JsonResponse({'error': 'Patient not found'}, status=404)
+
+            # Update the patient details
+            patient.name = data.get('name')
+            patient.mobile_number = data.get('contactNumber')
+            patient.address = data.get('address')
+            patient.save()
+            print("UPDATED SUCCESSFULLY")
+            return JsonResponse({'message': 'Patient details updated successfully!'}, status=200)
+        except Exception as e:
+            print(f"Error: {e}")  # Log the exception for debugging
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+@csrf_exempt
+def delete_patient(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            print("Received data:", data)  # Log received data for debugging
+            patient_id = data.get('patientId')
+            print("THE RECEIVED PATIENT ID IS",patient_id)
+            try:
+                patient = Patient.objects.get(id=patient_id)
+                patient.delete()
+            except Patient.DoesNotExist:
+                return JsonResponse({'error': 'Patient not found'}, status=404)
+            print("DELETED SUCCESSFULLY")
+            return JsonResponse({'message': 'Patient details deleted successfully!'}, status=200)
+        except Exception as e:
+            print(f"Error: {e}")  # Log the exception for debugging
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+# views.py
+from django.shortcuts import render
+from django.http import JsonResponse
+from .models import Patient, Department, EnteredDepartment
+
+from django.http import JsonResponse
+
+
+def get_patient_card_details(request):
+    patients = Patient.objects.all()
+    card_details = []
+
+    for patient in patients:
+        current_department = patient.current_department
+        upcoming_department = None
+        departments = patient.chosen_package.departments.all().order_by('id')
+        current_department_found = False
+
+        for department in departments:
+            if current_department_found:
+                upcoming_department = department.name
+                break
+            if department.name == current_department:
+                current_department_found = True
+
+        package_departments = Department.objects.filter(oncurepackage=patient.chosen_package)
+        entered_departments = EnteredDepartment.objects.filter(registration=patient).values_list('department__name',
+                                                                                                 flat=True)
+        remaining_departments = [department.name for department in package_departments if
+                                 department.name not in entered_departments]
+        print("THE REMAINING DEPARTMENST ARE",remaining_departments)
+        remaining_departments.remove(upcoming_department)
+
+        card_details.append({
+            'id': patient.id,
+            'patient_name':patient.name,
+            'buttonText': current_department,
+            'upcoming': upcoming_department,
+            'remaining_departments': remaining_departments
+        })
+
+    return JsonResponse({'cardDetails': card_details})
+
