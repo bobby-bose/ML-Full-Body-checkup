@@ -35,9 +35,9 @@ class Patient(models.Model):
     meals = models.ForeignKey(Meals, on_delete=models.CASCADE, null=True, blank=True)
     chosen_package = models.ForeignKey(Oncurepackages, on_delete=models.CASCADE, null=True, blank=True)
     assigned_department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
-    status = models.CharField(max_length=255, null=True, blank=True)
-    current_department = models.CharField(max_length=255, null=True, blank=True)
-
+    chosen_time = models.IntegerField(null=True, blank=True)
+    remaining_time = models.IntegerField(null=True, blank=True)
+    timer_active = models.BooleanField(default=False)
     def __str__(self):
         return self.name
 
@@ -49,5 +49,6 @@ class EnteredDepartment(models.Model):
 
     def __str__(self):
         return f"{self.registration.name} entered {self.department.name} on {self.entered_at}"
+
 
 
