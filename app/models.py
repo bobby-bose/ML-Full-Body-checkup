@@ -1,10 +1,7 @@
 from django.db import models
 
-class Oncurepackages(models.Model):
-    name = models.CharField(max_length=100)
 
-    def __str__(self):
-        return self.name
+
 
 class CoordinationFacilitators(models.Model):
     name = models.CharField(max_length=255)
@@ -12,19 +9,22 @@ class CoordinationFacilitators(models.Model):
     def __str__(self):
         return self.name
 
-
-class Department(models.Model):
-    name = models.CharField(max_length=100)
-    oncurepackage = models.ForeignKey(Oncurepackages, related_name='departments', on_delete=models.CASCADE)
-
-
-    def __str__(self):
-        return f"{self.name} ({self.oncurepackage.name})"
 class Meals(models.Model):
     name= models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
+class Oncurepackages(models.Model):
+    name = models.CharField(max_length=100)
+    def __str__(self):
+        return self.name
+
+class Department(models.Model):
+    name = models.CharField(max_length=100)
+    oncurepackage = models.ForeignKey(Oncurepackages, related_name='departments', on_delete=models.CASCADE)
+    def __str__(self):
+        return self.name
+
 class Patient(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)

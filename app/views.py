@@ -6,26 +6,47 @@ from django.views import View
 from .serializer import PatientSerializer,DepartmentSerializer
 
 
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Patient, Oncurepackages, EnteredDepartment, Department
+import json
+
 @csrf_exempt
 def add_patient(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body.decode('utf-8'))
             print("Received data:", data)
+
             chosen_package_id = data.get('chosen_package')
             if not chosen_package_id:
+                print("Missing chosen_package field")
                 return JsonResponse({'error': 'Missing chosen_package field'}, status=400)
-            chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
+
+            try:
+                chosen_package = Oncurepackages.objects.get(id=chosen_package_id)
+                print(f"Chosen package found: {chosen_package.name}")
+            except Oncurepackages.DoesNotExist:
+                print("Chosen package not found")
+                return JsonResponse({'error': 'Chosen package not found'}, status=404)
+
             required_fields = ['name', 'age', 'contact_number', 'address', 'chosen_package']
             for field in required_fields:
                 if field not in data:
                     print(f"Missing required field: {field}")
                     return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+
             for key, value in data.items():
                 print(f"{key}: {value}")
+
             first_department = get_available_department_for_package(chosen_package)
             if not first_department:
+                print("No available department for the chosen package")
                 return JsonResponse({'error': 'No available department for the chosen package'}, status=400)
+
+            print(f"First available department: {first_department.name}")
+
             patient = Patient(
                 name=data.get('name'),
                 age=data.get('age'),
@@ -37,15 +58,32 @@ def add_patient(request):
                 assigned_department=first_department,
             )
             patient.save()
+            print(f"Patient {patient.name} added successfully with ID {patient.id}")
+
             EnteredDepartment.objects.create(registration=patient, department=first_department)
+            print(f"Patient {patient.name} entered department {first_department.name}")
+
             return JsonResponse({'message': 'Patient added successfully!'}, status=201)
-        except Oncurepackages.DoesNotExist:
-            return JsonResponse({'error': 'Chosen package not found'}, status=404)
+
         except Exception as e:
             print(f"Error: {e}")  # Log the exception for debugging
             return JsonResponse({'error': str(e)}, status=400)
     else:
+        print("Invalid request method")
         return JsonResponse({'error': 'Invalid request method'}, status=400)
+
+def get_available_department_for_package(package):
+    print(f"Getting available department for package: {package.name}")
+    departments = Department.objects.filter(oncurepackage=package)
+    for department in departments:
+        print(f"Checking department: {department.name}")
+        assigned_patients = Patient.objects.filter(assigned_department=department).count()
+        if assigned_patients == 0:
+            print(f"Department {department.name} is available")
+            return department
+    print("No available department found")
+    return None
+
 
 
 from django.views.decorators.csrf import csrf_exempt
@@ -103,26 +141,26 @@ def details_patient(request):
         return JsonResponse({'error': 'Invalid request method'}, status=400)
 
 
-def get_available_department_for_package(package):
-    try:
-        all_departments = Department.objects.filter(oncurepackage=package)
-        busy_departments = Patient.objects.filter(assigned_department__isnull=False).values_list('assigned_department__name', flat=True).distinct()
-        free_departments = [department for department in all_departments if department.name not in busy_departments]
-        if free_departments:
-            return free_departments[0]  # Return the first free department
-        else:
-            return None
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return None
+# def get_available_department_for_package(package):
+#     try:
+#         all_departments = Department.objects.filter(oncurepackage=package)
+#         busy_departments = Patient.objects.filter(assigned_department__isnull=False).values_list('assigned_department__name', flat=True).distinct()
+#         free_departments = [department for department in all_departments if department.name not in busy_departments]
+#         if free_departments:
+#             return free_departments[0]  # Return the first free department
+#         else:
+#             return None
+#     except Exception as e:
+#         print(f"An unexpected error occurred: {e}")
+#         return None
 
 # Update View
 def packages_list(request):
     try:
-        obj=Oncurepackages.objects.all()
-        final=[]
+        obj = Oncurepackages.objects.all()
+        final = [{"id": 0, "name": "Select a Package"}]  # Initialize final list with 'Select a Package'
         for i in obj:
-            final.append({"id":i.id,"name":i.name})
+            final.append({"id": i.id, "name": i.name})
         print("The final list of the packages_list")
         print(final)
         return JsonResponse({'list': final}, status=200)
@@ -267,7 +305,6 @@ def next_department(request):
             print("EACH OF THEM IS", patient_id, chosen_package_id, current_department_id)
             patient = Patient.objects.get(id=patient_id)
             patient_obj=Patient.objects.get(id=patient_id)
-
             chosen_package = patient.chosen_package
             print("The chosen package", chosen_package, type(chosen_package))
             try:
@@ -292,11 +329,9 @@ def next_department(request):
             if next_department:
                 patient.current_department = next_department.name
                 patient.assigned_department = next_department
-
                 print("THE NEXT DEPARTMENT IS", next_department)
                 print("SUCCESSFULLY CHANGED THE DEPARTMENT")
                 patient.save()
-
                 EnteredDepartment.objects.create(registration=patient, department=next_department)
                 return JsonResponse({'success': True, 'nextDepartment': next_department.name})
             else:
@@ -388,7 +423,9 @@ def get_patient_card_details(request):
         entered_departments = EnteredDepartment.objects.filter(registration=patient).values_list('department__name', flat=True)
         remaining_departments = [department.name for department in package_departments if department.name not in entered_departments]
         if upcoming_department:
-            remaining_departments = [dept for dept in remaining_departments if dept != upcoming_department]
+            remaining_departments = [dept for dept in remaining_departments if dept != upcoming_department and dept != current_department]
+        # print("EEEEEEEEEEEEEEEEEEEAAAAAAAAAAAAAACCCCCCCCCCCCHHHHH",current_department,type(current_department))
+        # print("QQQQQQQQQQQQQ",remaining_departments,type(remaining_departments))
         card_details.append({
             'id': patient.id,
             'patient_name': patient.name,
@@ -411,8 +448,6 @@ def get_patient_middle_details(request):
         current_time = patient.current_time
         consulting = patient.consulting
         timer = patient.timer
-
-        # Decrement the current_time and update the patient object
         updated_time = decrement_time(current_time)
         patient.current_time = updated_time
         patient.save()
@@ -667,40 +702,6 @@ def update_each_second(request):
             "NOT OKAY"
         }, status=500)
 
-# @csrf_exempt
-# @api_view(['POST'])
-# def update_next_department(request):
-#     if request.method=="POST":
-#         data = json.loads(request.body)
-#         print("@@@@@@")
-#         pat_id = data.get('patId', None)
-#         pac_id=data.get('cho_pak',None)
-#         patient_obj=Patient.objects.get(id=pat_id)
-#         chosen_package_obj=Oncurepackages.objects.get(id=pac_id)
-#         print("%%%%%%%%%%%%%",pat_id,'^^^^^^^^^^^^',pac_id)
-#         obj=Patient.objects.get(id=pat_id)
-#         curent_department=obj.remaining_time
-#         print("CURRENT DEPARTMENT",curent_department)
-#         obj2 = EnteredDepartment.objects.filter(registration=patient_obj).values_list('department__name', flat=True)
-#         visited_department_list = list(obj2)
-#         print("ALL THE VISITED DEPARTMENT LISTS ",visited_department_list)
-#         obj3 = Department.objects.filter(oncurepackage=chosen_package_obj).values_list('name', flat=True)
-#         all_department_list = list(obj3)
-#         print("ALL  DEPARTMENT LISTS ", all_department_list)
-#         visited_department_list=set(visited_department_list)
-#         all_department_list=set(all_department_list)
-#         unvisited_department_list = list(visited_department_list.symmetric_difference(all_department_list))
-#         assigned_departments = Patient.objects.values_list('assigned_department__name', flat=True)
-#         assigned_departments_list = list(assigned_departments)
-#         print("ALL ENGAGED DEPARTMENTS ", assigned_departments_list)
-#         print("ALL THE UNVISITED DEPARTMENT LISTS ", unvisited_department_list)
-#         return Response({
-#             "department_list":unvisited_department_list
-#         }, status=200)
-#     else:
-#         return Response({
-#             "NOT OKAY"
-#         }, status=500)
 
 @csrf_exempt
 @api_view(['POST'])
@@ -711,20 +712,36 @@ def update_next_department(request):
         pac_id = data.get('cho_pak', None)
         patient_obj = Patient.objects.get(id=pat_id)
         chosen_package_obj = Oncurepackages.objects.get(id=pac_id)
-        obj = Patient.objects.get(id=pat_id)
-
-        visited_departments = set(EnteredDepartment.objects.filter(registration=patient_obj).values_list('department__name', flat=True))
-        all_departments = list(Department.objects.filter(oncurepackage=chosen_package_obj).values_list('name', flat=True))
-        assigned_departments = set(Patient.objects.values_list('assigned_department__name', flat=True).exclude(id=pat_id))
-        unvisited_department_list = [department for department in all_departments if department not in visited_departments and department not in assigned_departments]
-        print("THE IMMMMMMMMMMMMMMMMMMMMMMM", unvisited_department_list[0])
-        new_department_obj=Department.objects.get(name=unvisited_department_list[0])
-        obj.assigned_department=new_department_obj
-        obj.save()
-        print("The ",obj.name," chnaged to",obj.assigned_department)
+        all_departments = Department.objects.filter(oncurepackage=chosen_package_obj)
+        all_department_names = list(all_departments.values_list('name', flat=True))
+        visited_departments = EnteredDepartment.objects.filter(registration=patient_obj).values_list('department__name', flat=True)
+        visited_department_names = list(visited_departments)
+        assigned_departments = Patient.objects.values_list('assigned_department__name', flat=True)
+        assigned_department_names = list(assigned_departments)
+        unvisited_departments = [dept for dept in all_department_names if dept not in visited_department_names]
+        next_department = None
+        print("11111111111111111",unvisited_departments)
+        for department in unvisited_departments:
+            if department not in assigned_department_names:
+                next_department = Department.objects.get(name=department, oncurepackage=chosen_package_obj)
+                break
+        print("0000000000000",next_department)
+        if len(unvisited_departments) == 0:
+            print("ALL DEPARTMENTS FINISHED")
+            return Response({
+                "next_department": "FINISHED"
+            }, status=200)
+        patient_obj.assigned_department = next_department
+        patient_obj.save()
+        EnteredDepartment.objects.create(registration=patient_obj, department=next_department)
         return Response({
-            "next_department": unvisited_department_list[0]
+            "next_department": next_department.name
         }, status=200)
+    else:
+        return Response({
+            "message": "NOT OKAY"
+        }, status=500)
+
 
 
 
