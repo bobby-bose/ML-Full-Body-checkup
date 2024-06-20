@@ -19,6 +19,6 @@ path('api/time/current/', get_current_patient_time, name='get_current_patient_ti
 path('api/patients/', get_patients, name='get_patients'),
 path('api/departments/time/update/', update_departments_time, name='update_departments_time'),
     path('api/update_middle_timer/', update_middle_timer, name='update_middle_timer'),
-path('api/fetch-timers/', fetch_timers, name='fetch_timers'),
-path('api/update-patient-timer-active/', update_timer_active, name='update_timer_active'),
+path('api/update_each_second/', update_each_second, name='update_each_second'),
+path('api/update_next_department/', update_next_department, name='update_next_department'),
 ]

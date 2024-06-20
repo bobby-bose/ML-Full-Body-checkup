@@ -622,43 +622,110 @@ class UpdateMiddleTimer(View):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 @csrf_exempt
+@api_view(['POST'])
 def update_middle_timer(request):
-    data = json.loads(request.body)
-    print("{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{[[[[")
-    pat_id = data.get('patId', None)
-    new_time = data.get('timer', None)
-    print("&&&&&&&&&&&&&&&",pat_id,new_time)
-    obj=Patient.objects.get(id=pat_id)
-    new_time = new_time.split(":")[1]
-    new_time = int(new_time)
-    obj.remaining_time=new_time
-    obj.chosen_time=new_time
-    obj.save()
-    print("UPDATED THE MIDDLE TIMER")
-    return JsonResponse("Success")
-
-
-def update_timer_active(request):
-    data = json.loads(request.body)
-    print("6666666666666666")
-    pat_id = data.get('patientId', None)
-    status=data.get('status',None)
-    print("555555555555555555555555555555555555555555555555",status)
-    obj=Patient.objeects.get(id=pat_id)
-    if status:
-        print("UPDDDATING STATUS TO TRUE")
-        obj.timer_active=True
+    if request.method=="POST":
+        data = json.loads(request.body)
+        print("{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{[[[[")
+        pat_id = data.get('patId', None)
+        new_time = data.get('timer', None)
+        print("&&&&&&&&&&&&&&&",pat_id,new_time)
+        obj=Patient.objects.get(id=pat_id)
+        new_time = new_time.split(":")[1]
+        new_time = int(new_time)
+        obj.remaining_time=new_time
+        obj.chosen_time=new_time
+        obj.save()
+        print("UPDATED THE MIDDLE TIMER")
+        return Response({
+            "remaining_time":new_time
+        }, status=200)
     else:
-        print("UPDDDATING STATUS TO FALSE")
-        obj.timer_active = True
-    return JsonResponse("Success")
+        return Response({
+            "NOT OKAY"
+        }, status=500)
+
 @csrf_exempt
-def fetch_timers(request):
-    data = json.loads(request.body)
-    print("44444444444444",data)
-    pat_id = data.get('idd', None)
-    print("121212121",pat_id)
-    obj=Patient.objects.get(id=pat_id)
-    result = obj.remaining_time
-    print(result)
-    return JsonResponse({"result": result, "message": "Success"})
+@api_view(['POST'])
+def update_each_second(request):
+    if request.method=="POST":
+        data = json.loads(request.body)
+        print("3333333333333")
+        pat_id = data.get('patId', None)
+        print("!!!!!!!!!!!!",pat_id)
+        obj=Patient.objects.get(id=pat_id)
+        new_time=obj.remaining_time
+        new_time=new_time-1
+        obj.remaining_time=new_time
+        obj.save()
+        print("UPDATED each second to ",new_time)
+        return Response({
+            "updated_time":new_time
+        }, status=200)
+    else:
+        return Response({
+            "NOT OKAY"
+        }, status=500)
+
+# @csrf_exempt
+# @api_view(['POST'])
+# def update_next_department(request):
+#     if request.method=="POST":
+#         data = json.loads(request.body)
+#         print("@@@@@@")
+#         pat_id = data.get('patId', None)
+#         pac_id=data.get('cho_pak',None)
+#         patient_obj=Patient.objects.get(id=pat_id)
+#         chosen_package_obj=Oncurepackages.objects.get(id=pac_id)
+#         print("%%%%%%%%%%%%%",pat_id,'^^^^^^^^^^^^',pac_id)
+#         obj=Patient.objects.get(id=pat_id)
+#         curent_department=obj.remaining_time
+#         print("CURRENT DEPARTMENT",curent_department)
+#         obj2 = EnteredDepartment.objects.filter(registration=patient_obj).values_list('department__name', flat=True)
+#         visited_department_list = list(obj2)
+#         print("ALL THE VISITED DEPARTMENT LISTS ",visited_department_list)
+#         obj3 = Department.objects.filter(oncurepackage=chosen_package_obj).values_list('name', flat=True)
+#         all_department_list = list(obj3)
+#         print("ALL  DEPARTMENT LISTS ", all_department_list)
+#         visited_department_list=set(visited_department_list)
+#         all_department_list=set(all_department_list)
+#         unvisited_department_list = list(visited_department_list.symmetric_difference(all_department_list))
+#         assigned_departments = Patient.objects.values_list('assigned_department__name', flat=True)
+#         assigned_departments_list = list(assigned_departments)
+#         print("ALL ENGAGED DEPARTMENTS ", assigned_departments_list)
+#         print("ALL THE UNVISITED DEPARTMENT LISTS ", unvisited_department_list)
+#         return Response({
+#             "department_list":unvisited_department_list
+#         }, status=200)
+#     else:
+#         return Response({
+#             "NOT OKAY"
+#         }, status=500)
+
+@csrf_exempt
+@api_view(['POST'])
+def update_next_department(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        pat_id = data.get('patId', None)
+        pac_id = data.get('cho_pak', None)
+        patient_obj = Patient.objects.get(id=pat_id)
+        chosen_package_obj = Oncurepackages.objects.get(id=pac_id)
+        obj = Patient.objects.get(id=pat_id)
+
+        visited_departments = set(EnteredDepartment.objects.filter(registration=patient_obj).values_list('department__name', flat=True))
+        all_departments = list(Department.objects.filter(oncurepackage=chosen_package_obj).values_list('name', flat=True))
+        assigned_departments = set(Patient.objects.values_list('assigned_department__name', flat=True).exclude(id=pat_id))
+        unvisited_department_list = [department for department in all_departments if department not in visited_departments and department not in assigned_departments]
+        print("THE IMMMMMMMMMMMMMMMMMMMMMMM", unvisited_department_list[0])
+        new_department_obj=Department.objects.get(name=unvisited_department_list[0])
+        obj.assigned_department=new_department_obj
+        obj.save()
+        print("The ",obj.name," chnaged to",obj.assigned_department)
+        return Response({
+            "next_department": unvisited_department_list[0]
+        }, status=200)
+
+
+
+
