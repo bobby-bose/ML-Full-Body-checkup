@@ -22,6 +22,7 @@ class Oncurepackages(models.Model):
 class Department(models.Model):
     name = models.CharField(max_length=100)
     oncurepackage = models.ForeignKey(Oncurepackages, related_name='departments', on_delete=models.CASCADE)
+    time=models.IntegerField(null=True,blank=True)
     def __str__(self):
         return self.name
 
@@ -37,7 +38,9 @@ class Patient(models.Model):
     assigned_department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
     chosen_time = models.IntegerField(null=True, blank=True)
     remaining_time = models.IntegerField(null=True, blank=True)
+    progress_bar=models.IntegerField(default=100)
     timer_active = models.BooleanField(default=False)
+    waiting_package=models.ForeignKey(Oncurepackages, on_delete=models.CASCADE, null=True, blank=True,related_name='waiting_package')
     def __str__(self):
         return self.name
 
