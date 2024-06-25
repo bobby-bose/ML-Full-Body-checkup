@@ -23,6 +23,5 @@ path('api/update_next_department/', update_next_department, name='update_next_de
 path('api/start_timer/', start_timer, name='start_timer'),
     path('api/pause_timer/', pause_timer, name='pause_timer'),
 path('api/update_timer/', update_timer, name='update_timer'),
-path('api/waiting-patients/', waiting_patients, name='waiting_patients'),
 path('api/updatesettimer/', updatesettimer, name='updatesettimer'),
 ]
