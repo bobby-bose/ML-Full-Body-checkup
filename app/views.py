@@ -31,12 +31,14 @@ def details_patient(request):
             package_obj = Oncurepackages.objects.get(name=chosen_package_name)
             obj2 = Department.objects.filter(oncurepackage=package_obj)
             assignments=Patient_Assignments.objects.get(patient=obj)
+            remaining_time=assignments.remaining_time
             assigned_department_name=assignments.assigned.name
             patient_serializer = PatientSerializer(obj)
             department_names = list(obj2.values_list('name', flat=True))
             return Response({
                 'message': 'Patient added successfully!',
                 'data': patient_serializer.data,
+                'remaining_time':remaining_time,
                 'departments': department_names,
                 'assigned_dep': assigned_department_name
             }, status=200)
@@ -252,29 +254,19 @@ def get_patient_card_details(request):
     patients = Patient.objects.all()
     card_details = []
     for patient in patients:
-        current_department = patient.assigned_department.name if patient.assigned_department else None
-        upcoming_department = None
-        departments = patient.chosen_package.departments.all().order_by('id') if patient.chosen_package else []
-        current_department_found = False
-        current_time = patient.remaining_time
-        consulting = patient.timer_active
-        updated_time = current_time  # Assume this is being updated elsewhere
-        patient.current_time = updated_time
-        patient.save()
-        for department in departments:
-            if current_department_found:
-                upcoming_department = department.name
-                break
-            if department.name == current_department:
-                current_department_found = True
+        patient_id=patient.id
+        patient_name=patient.name
+        patient_assignment_object=Patient_Assignments.objects.get(patient=patient)
+        current_department=patient_assignment_object.assigned
+        upcoming_department = patient_assignment_object.waiting
+        updated_time=patient_assignment_object.remaining_time
         card_details.append({
-            'id': patient.id,
-            'patient_name': patient.name,
-            'buttonText': current_department,
-            'upcoming': upcoming_department,
-
+            'id': patient_id,
+            'patient_name': patient_name,
+            'buttonText': current_department.name,
+            'upcoming': upcoming_department.name,
             'time': updated_time,
-            'consulting': consulting,
+
         })
     return JsonResponse({'cardDetails': card_details})
 
@@ -383,11 +375,13 @@ def update_middle_timer(request):
         data = json.loads(request.body)
         pat_id = data.get('patId', None)
         new_time = data.get('timer', None)
-        obj=Patient.objects.get(id=pat_id)
         new_time = new_time.split(":")[1]
         new_time = int(new_time)
-        obj.remaining_time=new_time
-        obj.chosen_time=new_time
+        obj=Patient.objects.get(id=pat_id)
+        patient_assignment_obj=Patient_Assignments.objects.get(patient=obj)
+        patient_assignment_obj.remaining_time=new_time
+        patient_assignment_obj.chosen_time = new_time
+        patient_assignment_obj.save()
         obj.save()
         return Response({
             "remaining_time":new_time
@@ -418,20 +412,21 @@ def update_timer(request):
         obj = Patient.objects.all()
         for i in obj:
             if i.timer_active:
-                if i.remaining_time>-1:
-                    timer = i.remaining_time
+                patient_assignment_obj=Patient_Assignments.objects.get(patient=i)
+                if patient_assignment_obj.remaining_time>-1:
+                    timer = patient_assignment_obj.remaining_time
                     timer = timer - 1
-                    i.remaining_time = timer
+                    patient_assignment_obj.remaining_time = timer
                     var=timer
-                    if i.progress_bar>0:
-                        progress=i.progress_bar
+                    if patient_assignment_obj.progress_bar>0:
+                        progress=patient_assignment_obj.progress_bar
                         new_var=var
                         new_progress=progress
                         decrement=int(new_progress/new_var)
                         new_progress=new_progress-decrement
                         progress=new_progress
-                        i.progress_bar=progress
-                        i.save()
+                        patient_assignment_obj.progress_bar=progress
+                        patient_assignment_obj.save()
                     else:
                         i.timer_active = False
                         i.save()
@@ -474,9 +469,10 @@ def updatesettimer(request):
         patid=data.get('patId', None)
         time = data.get('time', None)
         patient=Patient.objects.get(id=patid)
-        patient.remaining_time=time
-        patient.progress_bar=100
-        patient.save()
+        patient_assignment_obj = Patient_Assignments.objects.get(patient=patient)
+        patient_assignment_obj.remaining_time=time
+        patient_assignment_obj.progress_bar=100
+        patient_assignment_obj.save()
         return JsonResponse({'status':'Success'})
     else:
         return JsonResponse({'status': 'Failure'})

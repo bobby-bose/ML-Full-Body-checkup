@@ -2,7 +2,7 @@ from .models import *
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
-from django.core.exceptions import ObjectDoesNotExist
+
 def for_add(package):
     all_departments = Department.objects.all().filter(oncurepackage=package)
     all_assigned = get_all_busy_departments()
@@ -17,6 +17,7 @@ def for_add(package):
     waiting_delete=Waiting_Departments.objects.all().filter(department=available_departments[0])
     if waiting_delete:
         waiting_delete.delete()
+
     return available_departments
 
 def for_update(package):
@@ -144,7 +145,9 @@ def add_patient(request):
             patient_assignments=Patient_Assignments(
                 patient=patient,
                 assigned=departments[0],
-                waiting=departments[1]
+                waiting=departments[1],
+                chosen_time=departments[0].time,
+            remaining_time=departments[0].time
             )
             patient_assignments.save()
             Entered_Departments.objects.create(patient=patient,department=departments[0])
