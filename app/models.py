@@ -1,11 +1,7 @@
 from django.db import models
 
-
-
-
 class CoordinationFacilitators(models.Model):
     name = models.CharField(max_length=255)
-
     def __str__(self):
         return self.name
 
@@ -23,6 +19,7 @@ class Department(models.Model):
     name = models.CharField(max_length=100)
     oncurepackage = models.ForeignKey(Oncurepackages, related_name='departments', on_delete=models.CASCADE)
     time=models.IntegerField(null=True,blank=True)
+
     def __str__(self):
         return self.name
 
@@ -36,22 +33,47 @@ class Patient(models.Model):
     meals = models.ForeignKey(Meals, on_delete=models.CASCADE, null=True, blank=True)
     chosen_package = models.ForeignKey(Oncurepackages, on_delete=models.CASCADE, null=True, blank=True)
     assigned_department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
-    chosen_time = models.IntegerField(null=True, blank=True)
-    remaining_time = models.IntegerField(null=True, blank=True)
+
     progress_bar=models.IntegerField(default=100)
     timer_active = models.BooleanField(default=False)
-    waiting_package=models.ForeignKey(Oncurepackages, on_delete=models.CASCADE, null=True, blank=True,related_name='waiting_package')
+    waiting_department=models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True,related_name='waiting_package')
     def __str__(self):
         return self.name
-
-
-class EnteredDepartment(models.Model):
-    registration = models.ForeignKey(Patient, related_name='entered_departments', on_delete=models.CASCADE)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE)
-    entered_at = models.DateTimeField(auto_now_add=True)
+class Occupied_Departments(models.Model):
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.registration.name} entered {self.department.name} on {self.entered_at}"
+        return self.department.name
 
+class Patient_Assignments(models.Model):
+    patient = models.ForeignKey(Patient, related_name='patient_assignments', on_delete=models.CASCADE)
+    assigned = models.ForeignKey(Department, related_name='assigned_patient_assignments', on_delete=models.CASCADE)
+    waiting = models.ForeignKey(Department, related_name='waiting_patient_assignments', on_delete=models.CASCADE)
+    chosen_time = models.IntegerField(null=True, blank=True)
+    remaining_time = models.IntegerField(null=True, blank=True)
 
+    def __str__(self):
+        return self.patient.name
+
+class Waiting_Departments(models.Model):
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return self.department.name
+
+class Entered_Departments(models.Model):
+    patient = models.ForeignKey(Patient, related_name='entered_departments_patients', on_delete=models.CASCADE)
+    department = models.ForeignKey(Department, related_name='entered_departments_department', on_delete=models.CASCADE)
+    def __str__(self):
+        return f"{self.patient.name} - Entered: {self.department.name}"
+    class Meta:
+        ordering = ['patient', 'department']
+
+class Unentered_Departments(models.Model):
+    patient = models.ForeignKey(Patient, related_name='unentered_departments_patients', on_delete=models.CASCADE)
+    department = models.ForeignKey(Department, related_name='unentered_departments_department', on_delete=models.CASCADE)
+    def __str__(self):
+        return f"{self.patient.name} - Unentered: {self.department.name}"
+    class Meta:
+        ordering = ['patient', 'department']
 

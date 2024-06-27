@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import *
+from .utilities import *
 
 urlpatterns = [
     path('api/patients/add/', add_patient, name='add_patient'),
@@ -11,7 +12,6 @@ path('api/coordinationfacilitator/list/', coordinationfacilitator_list, name='co
 path('api/meals/list/', meals_list, name='meals_list'),
 path('api/departments/list/', departments_list, name='departments_list'),
 path('api/patient/status/', get_patient_status, name='get_patient_status'),
-path('api/departments/next/', next_department, name='next_department'),
 path('api/departments/current/', get_current_patient_department, name='get_current_patient'),
 path('api/packages/current/', get_current_patient_package, name='get_current_patient_package'),
 path('api/time/current/', get_current_patient_time, name='get_current_patient_time'),
@@ -24,4 +24,6 @@ path('api/start_timer/', start_timer, name='start_timer'),
     path('api/pause_timer/', pause_timer, name='pause_timer'),
 path('api/update_timer/', update_timer, name='update_timer'),
 path('api/updatesettimer/', updatesettimer, name='updatesettimer'),
+path('removeallassigned/', removeallassigned, name='removeallassigned'),
+path('removeallwaiting/', removeallwaiting, name='removeallwaiting'),
 ]
