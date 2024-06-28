@@ -50,6 +50,7 @@ class Patient_Assignments(models.Model):
     chosen_time = models.IntegerField(null=True, blank=True)
     remaining_time = models.IntegerField(null=True, blank=True)
     progress_bar = models.IntegerField(default=100)
+    remaining_departments=models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.patient.name

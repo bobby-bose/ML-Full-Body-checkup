@@ -26,4 +26,5 @@ path('api/update_timer/', update_timer, name='update_timer'),
 path('api/updatesettimer/', updatesettimer, name='updatesettimer'),
 path('removeallassigned/', removeallassigned, name='removeallassigned'),
 path('removeallwaiting/', removeallwaiting, name='removeallwaiting'),
+path('alloccupied/', all_occupied_html, name='all_occupied_html'),
 ]
