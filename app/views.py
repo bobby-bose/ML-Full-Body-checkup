@@ -31,16 +31,20 @@ def details_patient(request):
             package_obj = Oncurepackages.objects.get(name=chosen_package_name)
             obj2 = Department.objects.filter(oncurepackage=package_obj)
             assignments=Patient_Assignments.objects.get(patient=obj)
-            remaining_time=assignments.remaining_time
+            remaining_time_minutes=assignments.remaining_minutes
+            remaining_time_seconds=assignments.remaining_second
             assigned_department_name=assignments.assigned.name
+            progress_bar=assignments.progress_bar
             patient_serializer = PatientSerializer(obj)
             department_names = list(obj2.values_list('name', flat=True))
             return Response({
                 'message': 'Patient added successfully!',
                 'data': patient_serializer.data,
-                'remaining_time':remaining_time,
+                'remaining_time_minutes':remaining_time_minutes,
+                'remaining_time_seconds':remaining_time_seconds,
                 'departments': department_names,
-                'assigned_dep': assigned_department_name
+                'assigned_dep': assigned_department_name,
+                'progress_bar':progress_bar
             }, status=200)
         except Patient.DoesNotExist:
 
@@ -202,8 +206,11 @@ def edit_patient(request):
 def delete_patient(request):
     if request.method == 'POST':
         try:
+            print("rrrrrrrrrrrrr")
             data = json.loads(request.body.decode('utf-8'))
-            patient_id = data.get('patientId')
+            print("data",data)
+            patient_id = data.get('secondpatientId')
+            print("patient_id", patient_id)
             try:
                 patient = Patient.objects.get(id=patient_id)
                 patient_assignments = Patient_Assignments.objects.filter(patient=patient)
@@ -250,25 +257,35 @@ def decrement_time(time_str):
     mins, secs = divmod(total_seconds, 60)
     return f"{mins}:{secs:02d}"
 
+@csrf_exempt
 def get_patient_card_details(request):
-    patients = Patient.objects.all()
-    card_details = []
-    for patient in patients:
-        patient_id=patient.id
-        patient_name=patient.name
-        patient_assignment_object=Patient_Assignments.objects.get(patient=patient)
-        current_department=patient_assignment_object.assigned
-        upcoming_department = patient_assignment_object.waiting
-        updated_time=patient_assignment_object.remaining_time
-        card_details.append({
-            'id': patient_id,
-            'patient_name': patient_name,
-            'buttonText': current_department.name,
-            'upcoming': upcoming_department.name,
-            'time': updated_time,
+        patients = Patient.objects.all()
+        card_details = []
+        for patient in patients:
+            patient_id = patient.id
+            patient_name = patient.name
+            patient_assignment_object = Patient_Assignments.objects.get(patient=patient)
+            current_department = patient_assignment_object.assigned
+            next_department=patient_assignment_object.waiting
+            next_dept_minutes=Department.objects.get(name=next_department.name).remaining_minutes
+            next_dept_seconds = Department.objects.get(name=next_department.name).remaining_seconds
+            updated_time_minutes = patient_assignment_object.remaining_minutes
+            updated_time_seconds = patient_assignment_object.remaining_second
+            total_minutes=patient_assignment_object.total_minute
+            total_seconds=patient_assignment_object.total_second
+            total_time=str(total_minutes)+" : "+str(total_seconds)
+            buttonText1 = str(current_department.name)+"      ["+str(updated_time_minutes)+" : "+str(updated_time_seconds)+"]"
+            buttonText2 = str(next_department.name) + "       [" + str(next_dept_minutes)+" : "+str(next_dept_seconds)+"]"
+            card_details.append({
+                'id': patient_id,
+                'patient_name': patient_name,
+                'total_time':total_time,
+                'buttonText1': buttonText1,
+                'buttonText2': 'Upcoming',
+                'buttonText3': buttonText2,
+            })
+        return JsonResponse({'cardDetails': card_details})
 
-        })
-    return JsonResponse({'cardDetails': card_details})
 
 
 @csrf_exempt
@@ -392,62 +409,89 @@ def update_middle_timer(request):
         }, status=500)
 
 
-
 @csrf_exempt
+@api_view(['POST'])
 def start_timer(request):
     if request.method == "POST":
         data = json.loads(request.body)
         patient_id = data.get('patId', None)
-        obj=Patient.objects.get(id=patient_id)
-        obj.timer_active=True
-        obj.save()
-        return JsonResponse({'status': 'started'})
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            patient.timer_active = True
+            patient.save()
+            return JsonResponse({'status': 'started'})
+        except Patient.DoesNotExist:
+            return JsonResponse({'error': 'Patient not found'}, status=404)
     else:
-        return Response({
-            "message": "NOT OKAY"
-        }, status=500)
+        return JsonResponse({
+            "error": "Method not allowed"
+        }, status=405)
 
 @csrf_exempt
 def update_timer(request):
         obj = Patient.objects.all()
         for i in obj:
+            patient_assignment_obj = Patient_Assignments.objects.get(patient=i)
+            total_minutes = patient_assignment_obj.total_minute
+            total_seconds = patient_assignment_obj.total_second
+            if total_seconds==60:
+                total_minutes=total_minutes+1
+                patient_assignment_obj.total_minute=total_minutes
+                patient_assignment_obj.total_second=0
+                patient_assignment_obj.save()
+            else:
+                total_seconds=total_seconds+1
+                patient_assignment_obj.total_second=total_seconds
+                patient_assignment_obj.save()
             if i.timer_active:
-                patient_assignment_obj=Patient_Assignments.objects.get(patient=i)
-                if patient_assignment_obj.remaining_time>-1:
-                    timer = patient_assignment_obj.remaining_time
-                    timer = timer - 1
-                    patient_assignment_obj.remaining_time = timer
-                    var=timer
-                    if patient_assignment_obj.progress_bar>0:
-                        progress=patient_assignment_obj.progress_bar
-                        new_var=var
-                        new_progress=progress
-                        decrement=int(new_progress/new_var)
-                        new_progress=new_progress-decrement
-                        progress=new_progress
-                        patient_assignment_obj.progress_bar=progress
+                if patient_assignment_obj.remaining_minutes>-1:
+                    if patient_assignment_obj.remaining_second==0:
+                        minutes=patient_assignment_obj.remaining_minutes
+                        minutes=minutes-1
+                        patient_assignment_obj.remaining_minutes=minutes
+                        patient_assignment_obj.remaining_second=60
                         patient_assignment_obj.save()
                     else:
-                        i.timer_active = False
-                        i.save()
+                        second=patient_assignment_obj.remaining_second
+                        second=second-1
+                        patient_assignment_obj.remaining_second=second
+                        patient_assignment_obj.save()
+                total_seconds=patient_assignment_obj.remaining_minutes*60+patient_assignment_obj.remaining_second
+
+                if patient_assignment_obj.progress_bar > 0:
+                    progress = patient_assignment_obj.progress_bar
+                    print("THE TOTAL seconds",total_seconds)
+                    new_var = total_seconds
+                    new_progress = progress
+                    decrement = new_progress / new_var
+                    print("THE TOTAL decrements", decrement)
+                    new_progress = new_progress - decrement
+                    progress = new_progress
+                    print("THE new_progress", new_progress)
+                    patient_assignment_obj.progress_bar = progress
+                    patient_assignment_obj.save()
                 else:
-                    i.timer_active=False
+                    i.timer_active = False
                     i.save()
         return JsonResponse({'status': 'Updating'})
 
 @csrf_exempt
+@api_view(['POST'])
 def pause_timer(request):
     if request.method == "POST":
         data = json.loads(request.body)
         patient_id = data.get('patId', None)
-        obj = Patient.objects.get(id=patient_id)
-        obj.timer_active = False
-        obj.save()
-        return JsonResponse({'status': 'paused'})
+        try:
+            patient = Patient.objects.get(id=patient_id)
+            patient.timer_active = False
+            patient.save()
+            return JsonResponse({'status': 'started'})
+        except Patient.DoesNotExist:
+            return JsonResponse({'error': 'Patient not found'}, status=404)
     else:
-        return Response({
-            "message": "NOT OKAY"
-        }, status=500)
+        return JsonResponse({
+            "error": "Method not allowed"
+        }, status=405)
 
 def waiting_patients(request):
     chosen_obj = Oncurepackages.objects.get(name="waiting")
@@ -470,7 +514,8 @@ def updatesettimer(request):
         time = data.get('time', None)
         patient=Patient.objects.get(id=patid)
         patient_assignment_obj = Patient_Assignments.objects.get(patient=patient)
-        patient_assignment_obj.remaining_time=time
+        patient_assignment_obj.remaining_minutes=time
+        patient_assignment_obj.remaining_second=60
         patient_assignment_obj.progress_bar=100
         patient_assignment_obj.save()
         return JsonResponse({'status':'Success'})

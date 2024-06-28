@@ -49,6 +49,7 @@ def update_next_department(request):
                 if len(departments):
                     patient_assigned_object.assigned=patient_assigned_object.waiting
                     patient_assigned_object.waiting=departments[0]
+                    patient_assigned_object.remaining_time=patient_assigned_object.waiting.remaining_minutes
                     patient_assigned_object.save()
                     Entered_Departments.objects.create(patient=patient_object, department=departments[0])
                     Unentered_Departments.objects.get(patient=patient_object, department=departments[0]).delete()
@@ -57,40 +58,13 @@ def update_next_department(request):
                     if patient_assigned_object.waiting==waiting_object:
                         return JsonResponse({'success': False, 'next_department': 'WAITING'})
                     patient_assigned_object.assigned = patient_assigned_object.waiting
+                    patient_assigned_object.remaining_time = patient_assigned_object.waiting.remaining_minutes
                     patient_assigned_object.waiting = waiting_object
                     patient_assigned_object.save()
                     return JsonResponse({'success': True, 'message': 'Success'})
             if total_departments_count==total_department_patient_entered_count:
                 return JsonResponse({'success': False, 'next_department': 'FINISHED'})
-            # if patient_assigned_object.waiting.name=="waiting":
-            #     return JsonResponse({'success': False, 'next_department': 'WAITING'})
-            # if total_departments_count == total_department_patient_entered_count:
-            #     return JsonResponse({'success': False, 'next_department': 'FINISHED'})
-            # else:
-            #     remaining_departments = []
-            #     patient_entered = Entered_Departments.objects.all().filter(patient=patient_object)
-            #     entered_depart = []
-            #     for i in patient_entered:
-            #         entered_depart.append(i.department)
-            #     total_departments = Department.objects.all().filter(oncurepackage=package_object)
-            #     for i in total_departments:
-            #         if i not in entered_depart:
-            #             remaining_departments.append(i)
-            # earlier_assigned_department=patient_assigned_object.assigned
-            # earlier_waiting_department = patient_assigned_object.waiting
-            # patient_assigned_object.assigned=earlier_waiting_department
-            # departments=for_update(patient_object,package_object)
-            # if len(departments):
-            #     pass
-            # else:
-            #     waiting_obj=Department.objects.get(name="FINISHED")
-            #     patient_assigned_object.waiting=waiting_obj
-            #     patient_assigned_object.save()
-            #     return JsonResponse({'success': False, 'message': 'Invalid request method'})
-            # patient_assigned_object.waiting=departments[0]
-            # Entered_Departments.objects.create(patient=patient_object, department=departments[0])
-            # patient_assigned_object.save()
-            # Unentered_Departments.objects.get(patient=patient_object, department=departments[0]).delete()
+
         except Exception as e:
             print("The Exception is ",e)
             return JsonResponse({'success': False, 'message': str(e)})
@@ -123,15 +97,18 @@ def add_patient(request):
             )
             patient.save()
             departments = for_add(chosen_package)
-            print("#################",departments)
+            print("444444444444444444444444444444444444444444444444444444444444")
             patient_assignments=Patient_Assignments(
                 patient=patient,
                 assigned=departments[0],
                 waiting=departments[1],
-                chosen_time=departments[0].time,
-            remaining_time=departments[0].time
+                chosen_time=departments[0].remaining_minutes,
+            remaining_minutes=departments[0].remaining_minutes,
+                remaining_second=departments[0].remaining_seconds
             )
+            print("444444444444444444444444444444444444444444444444444444444444")
             patient_assignments.save()
+            print("444444444444444444444444444444444444444444444444444444444444")
             Entered_Departments.objects.create(patient=patient,department=departments[0])
             Entered_Departments.objects.create(patient=patient, department=departments[1])
             Entered_and_Unentered(patient, chosen_package)
