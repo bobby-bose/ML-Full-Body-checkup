@@ -54,7 +54,7 @@ class Patient_Assignments(models.Model):
     remaining_departments=models.TextField(null=True, blank=True)
     total_minute=models.IntegerField(default=0)
     total_second = models.IntegerField(default=0)
-
+    is_waiting=models.BooleanField(default=False)
     def __str__(self):
         return self.patient.name
 

@@ -3,31 +3,56 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.http import JsonResponse
 
-def for_add(package):
-    all_departments = Department.objects.all().filter(oncurepackage=package)
-    all_assigned = get_all_busy_departments()
-    all_tobe_assigned = get_all_waiting_departments()
-    all_waiting=Waiting_Departments.objects.all()
-    all_assigned = list(all_assigned)
-    all_tobe_assigned = list(all_tobe_assigned)
-    all_waiting = list(all_waiting)
-    not_free=all_assigned+all_waiting+all_tobe_assigned
-    free=list(all_departments)
-    available_departments = [item for item in free if item not in not_free]
-    waiting_delete=Waiting_Departments.objects.all().filter(department=available_departments[0])
-    if waiting_delete:
-        waiting_delete.delete()
-    return available_departments
+def get_all_free_departments(package):
+    obj=Patient_Assignments.objects.all()
+    not_free=[]
+    free=[]
+    for i in obj:
+        not_free.append(i.assigned)
+        not_free.append(i.waiting)
+    all=Department.objects.all().filter(oncurepackage=package)
+    for i in all:
+        if i not in not_free:
+            free.append(i)
+    return free
 
-def for_update(patient,package):
-    final=[]
-    # get all the free departments
-    unentered_departments = Unentered_Departments.objects.filter(patient=patient)
-    departments = [ud.department for ud in unentered_departments]
-    # make sure In free departments NO OCCUPIED DEPARTMENTS
-    occupied=all_occupied()
-    final=[dep for dep in departments if dep not in occupied]
-    return final
+def get_first_not_null_waiting():
+    obj = Patient_Assignments.objects.all()
+    waiting_obj = Department.objects.get(name='waiting')
+    free=[]
+    for i in obj:
+        if i.waiting != waiting_obj:
+            free.append({'id':i.id,'waiting':i.waiting})
+    return free
+
+def get_waiting_department_id_based_on_time():
+    obj=Patient_Assignments.objects.all()
+    result=[]
+    min_id=None
+    for i in obj:
+        check = check_if_department_based_on_time_already_exist(i.assigned)
+        if check:
+            print("YESSSSSSSSSSSSSSS",i.assigned,"already exists in the List")
+            pass
+        else:
+            minutes = i.remaining_minutes
+            seconds = i.remaining_second
+            total_seconds = (minutes * 60) + seconds
+            result.append({'id': i.id, 'total_seconds': total_seconds})
+    min_entry = min(result, key=lambda x: x['total_seconds'])
+    min_id = min_entry['id']
+    return min_id
+
+def check_if_department_based_on_time_already_exist(dept):
+    obj=Patient_Assignments.objects.filter(is_waiting=True)
+    obj_list =list(obj)
+    assigned_values = [assignment.assigned for assignment in obj_list]
+    print("11111111111111111111111111111111",assigned_values)
+    print("333333333333333333333333333333333",dept)
+    if dept in assigned_values:
+        return True
+    else:
+        return False
 
 @csrf_exempt
 def update_next_department(request):
@@ -76,6 +101,7 @@ def add_patient(request):
         try:
             data = json.loads(request.body.decode('utf-8'))
             chosen_package_id = data.get('chosen_package')
+            waiting_obj=Department.objects.get(name='waiting')
             if not chosen_package_id:
                 return JsonResponse({'error': 'Missing chosen_package field'}, status=400)
             try:
@@ -96,24 +122,49 @@ def add_patient(request):
                 chosen_package=chosen_package,  # Correctly assign the chosen package
             )
             patient.save()
-            departments = for_add(chosen_package)
-            print("444444444444444444444444444444444444444444444444444444444444")
+            departments = get_all_free_departments(chosen_package)
+            one=None
+            two=None
+            if len(departments)==0:
+                bobby=get_first_not_null_waiting()
+                if len(bobby)==0:
+                    id=get_waiting_department_id_based_on_time()
+                    obj=Patient_Assignments.objects.get(id=id)
+                    current=obj.assigned
+                    one=current
+                    patient_assignments = Patient_Assignments(
+                        patient=patient,
+                        assigned=one,
+                        waiting=waiting_obj,
+                        chosen_time=one.remaining_minutes,
+                        remaining_minutes=one.remaining_minutes,
+                        remaining_second=one.remaining_seconds,
+                        is_waiting=True
+                    )
+                    patient_assignments.save()
+                    return JsonResponse({'message': 'Patient added successfully!'}, status=201)
+                else:
+                    one = get_first_not_null_waiting()[0]["waiting"]
+                    id = get_first_not_null_waiting()[0]["id"]
+                    obj = Patient_Assignments.objects.get(id=id)
+                    obj.waiting = waiting_obj
+                    obj.save()
+                two=waiting_obj
+            elif len(departments) == 1:
+                one=departments[0]
+                two=waiting_obj
+            else:
+                one=departments[0]
+                two=departments[1]
             patient_assignments=Patient_Assignments(
                 patient=patient,
-                assigned=departments[0],
-                waiting=departments[1],
-                chosen_time=departments[0].remaining_minutes,
-            remaining_minutes=departments[0].remaining_minutes,
-                remaining_second=departments[0].remaining_seconds
+                assigned=one,
+                waiting=two,
+                chosen_time=one.remaining_minutes,
+            remaining_minutes=one.remaining_minutes,
+                remaining_second=one.remaining_seconds
             )
-            print("444444444444444444444444444444444444444444444444444444444444")
             patient_assignments.save()
-            print("444444444444444444444444444444444444444444444444444444444444")
-            Entered_Departments.objects.create(patient=patient,department=departments[0])
-            Entered_Departments.objects.create(patient=patient, department=departments[1])
-            Entered_and_Unentered(patient, chosen_package)
-            get_all_busy_departments()
-            get_all_waiting_departments()
             return JsonResponse({'message': 'Patient added successfully!'}, status=201)
         except Exception as e:
             print("THE ERRRR",e)
