@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Assignments</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Patient Assignments</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Assigned Department</th>
+                    <th>Waiting Department</th>
+                    <th>Chosen Time</th>
+                    <th>Remaining Minutes</th>
+                    <th>Remaining Seconds</th>
+                    <th>Progress Bar</th>
+                    <th>Remaining Departments</th>
+                    <th>Total Minutes</th>
+                    <th>Total Seconds</th>
+                    <th>Is Waiting</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assignment in assignments %}
+                <tr>
+                    <td>{{ assignment.patient.name }}</td>
+                    <td>{{ assignment.assigned.name }}</td>
+                    <td>{{ assignment.waiting.name }}</td>
+                    <td>{{ assignment.chosen_time }}</td>
+                    <td>{{ assignment.remaining_minutes }}</td>
+                    <td>{{ assignment.remaining_second }}</td>
+                    <td>{{ assignment.progress_bar }}%</td>
+                    <td>{{ assignment.remaining_departments }}</td>
+                    <td>{{ assignment.total_minute }}</td>
+                    <td>{{ assignment.total_second }}</td>
+                    <td>{{ assignment.is_waiting }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

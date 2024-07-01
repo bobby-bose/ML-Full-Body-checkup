@@ -65,8 +65,8 @@ class Waiting_Departments(models.Model):
         return self.department.name
 
 class Entered_Departments(models.Model):
-    patient = models.ForeignKey(Patient, related_name='entered_departments_patients', on_delete=models.CASCADE)
-    department = models.ForeignKey(Department, related_name='entered_departments_department', on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, related_name='entered_departments', on_delete=models.CASCADE)
+    department = models.ForeignKey(Department, related_name='entered_by_patients', on_delete=models.CASCADE)
     def __str__(self):
         return f"{self.patient.name} - Entered: {self.department.name}"
     class Meta:
