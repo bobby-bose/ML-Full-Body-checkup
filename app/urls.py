@@ -24,6 +24,7 @@ path('api/update_next_department/', update_next_department, name='update_next_de
 path('api/start_timer/', start_timer, name='start_timer'),
     path('api/pause_timer/', pause_timer, name='pause_timer'),
 path('api/update_timer/', update_timer, name='update_timer'),
+path('api/fulltimer/', fulltimer, name='fulltimer'),
 path('api/updatesettimer/', updatesettimer, name='updatesettimer'),
 path('removeallassigned/', removeallassigned, name='removeallassigned'),
 path('removeallwaiting/', removeallwaiting, name='removeallwaiting'),
@@ -31,4 +32,5 @@ path('alloccupied/', all_occupied_html, name='all_occupied_html'),
 path('ps/', patient_assignments_list, name='patient_assignments_list'),
     path('wd/', waiting_departments_list, name='waiting_departments_list'),
 path('ed/', entered_departments_list, name='entered_departments_list'),
+path('d/', department_list, name='department_list'),
 ]

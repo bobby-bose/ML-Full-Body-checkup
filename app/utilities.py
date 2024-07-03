@@ -6,54 +6,6 @@ from django.http import JsonResponse
 from .update_department import get_free_department
 
 
-#
-# def for_update(package_object,patient):
-#     waiting_obj = Department.objects.get(name='waiting')
-#     waiting_departments=get_all_waiting_departments()
-#     if len(waiting_departments):
-#         return waiting_departments[0]
-#     departments = get_all_free_departments(package_object)
-#     if len(departments) == 0:
-#         bobby = get_first_not_null_waiting()
-#         if len(bobby) == 0:
-#             id = get_waiting_department_id_based_on_time()
-#             obj = Patient_Assignments.objects.get(id=id)
-#             current = obj.assigned
-#             one = current
-#             patient_assignments = Patient_Assignments(
-#                 patient=patient,
-#                 assigned=one,
-#                 waiting=waiting_obj,
-#                 chosen_time=one.remaining_minutes,
-#                 remaining_minutes=one.remaining_minutes,
-#                 remaining_second=one.remaining_seconds,
-#                 is_waiting=True
-#             )
-#             patient_assignments.save()
-#             return JsonResponse({'message': 'Patient added successfully!'}, status=201)
-#         else:
-#             one = get_first_not_null_waiting()[0]["waiting"]
-#             id = get_first_not_null_waiting()[0]["id"]
-#             obj = Patient_Assignments.objects.get(id=id)
-#             obj.waiting = waiting_obj
-#             obj.save()
-#         two = waiting_obj
-#     elif len(departments) == 1:
-#         one = departments[0]
-#         two = waiting_obj
-#     else:
-#         one = departments[0]
-#         two = departments[1]
-#     patient_assignments = Patient_Assignments(
-#         patient=patient,
-#         assigned=one,
-#         waiting=two,
-#         chosen_time=one.remaining_minutes,
-#         remaining_minutes=one.remaining_minutes,
-#         remaining_second=one.remaining_seconds
-#     )
-#     patient_assignments.save()
-
 
 def get_all_free_departments(package):
     obj=Patient_Assignments.objects.all()
@@ -153,16 +105,6 @@ def update_next_department(request):
             waiting_object = Department.objects.get(name="waiting")
             total_entered_count = Entered_Departments.objects.all().filter(patient=patient_object).count()
             total_departments_count = Department.objects.all().filter(oncurepackage=package_object).count()
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("total_departments_count",total_departments_count)
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("%%%%%%%%%%%%%%%%%%%%%%%%%")
-            print("total_entered_count", total_entered_count)
             if total_departments_count == total_entered_count:
                 return JsonResponse({'success': True, 'next_department': 'FINISHED'})
             if patient_assigned_object.waiting == waiting_object:
@@ -170,17 +112,23 @@ def update_next_department(request):
                     if just_checking==waiting_object:
                         return JsonResponse({'success': True, 'next_department': 'WAITING'})
                     patient_assigned_object.assigned=just_checking
+                    patient_assigned_object.chosen_time=just_checking.remaining_minutes
+                    patient_assigned_object.remaining_minutes=just_checking.remaining_minutes
+                    patient_assigned_object.assigned=just_checking
                     Entered_Departments.objects.create(patient=patient_object,department=just_checking)
                     patient_assigned_object.save()
             else:
                 Waiting_Departments.objects.create(department=patient_assigned_object.assigned)
                 patient_assigned_object.assigned = patient_assigned_object.waiting
+                patient_assigned_object.chosen_time = patient_assigned_object.waiting.remaining_minutes
+                patient_assigned_object.remaining_minutes = patient_assigned_object.waiting.remaining_minutes
                 Entered_Departments.objects.create(patient=patient_object, department=patient_assigned_object.assigned)
                 next_department = get_free_department(package_object, patient_object)
                 if next_department is None:
                     print("The next department is None, setting to waiting_object")
                     next_department = waiting_object
                 patient_assigned_object.waiting = next_department
+                patient_assigned_object.chosen_time = next_department.remaining_minutes
                 patient_assigned_object.save()
                 return JsonResponse({'success': True, 'next_department': 'SUCCESS'})
         except Exception as e:
@@ -313,6 +261,11 @@ def all_occupied():
         waiting.append(i.waiting)
     full = busy + waiting
     return full
+
+def department_list(request):
+    obj=Oncurepackages.objects.get(name="Wellcure Complete Assessment")
+    departments = Department.objects.all().filter(oncurepackage=obj)
+    return render(request, 'new/dep.html', {'departments': departments})
 
 
 

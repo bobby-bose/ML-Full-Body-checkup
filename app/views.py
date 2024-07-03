@@ -47,7 +47,6 @@ def details_patient(request):
                 'progress_bar':progress_bar
             }, status=200)
         except Patient.DoesNotExist:
-
             return JsonResponse({'error': 'Patient not found'}, status=404)
         except Oncurepackages.DoesNotExist:
 
@@ -65,8 +64,13 @@ def packages_list(request):
     try:
         obj = Oncurepackages.objects.all()
         final = [{"id": 0, "name": "Select a Package"}]  # Initialize final list with 'Select a Package'
+        avoid=["waiting","FINISHED"]
         for i in obj:
-            final.append({"id": i.id, "name": i.name})
+            if i.name in avoid:
+                pass
+            else:
+                final.append({"id": i.id, "name": i.name})
+        print("PACKAGES ",final)
         return JsonResponse({'list': final}, status=200)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -76,7 +80,7 @@ def packages_list(request):
 def coordinationfacilitator_list(request):
     try:
         obj=CoordinationFacilitators.objects.all()
-        final=[]
+        final = [{"id": 0, "name": "Select a CF"}]
         for i in obj:
             final.append({"id":i.id,"name":i.name})
         return JsonResponse({'list': final}, status=200)
@@ -88,7 +92,7 @@ def coordinationfacilitator_list(request):
 def meals_list(request):
     try:
         obj=Meals.objects.all()
-        final=[]
+        final = [{"id": 0, "name": "Select a Meals"}]
         for i in obj:
             final.append({"id":i.id,"name":i.name})
         return JsonResponse({'list': final}, status=200)
@@ -209,7 +213,7 @@ def delete_patient(request):
             print("rrrrrrrrrrrrr")
             data = json.loads(request.body.decode('utf-8'))
             print("data",data)
-            patient_id = data.get('secondpatientId')
+            patient_id = data.get('patientId')
             print("patient_id", patient_id)
             try:
                 patient = Patient.objects.get(id=patient_id)
@@ -412,13 +416,17 @@ def update_middle_timer(request):
 @csrf_exempt
 @api_view(['POST'])
 def start_timer(request):
+    print("ENTERED START TIMER")
     if request.method == "POST":
+        print("ENTERED START TIMER POST")
         data = json.loads(request.body)
         patient_id = data.get('patId', None)
+        print("ENTERED START TIMER PATIENT ID",patient_id)
         try:
             patient = Patient.objects.get(id=patient_id)
             patient.timer_active = True
             patient.save()
+            print("Successfully changed")
             return JsonResponse({'status': 'started'})
         except Patient.DoesNotExist:
             return JsonResponse({'error': 'Patient not found'}, status=404)
@@ -428,52 +436,47 @@ def start_timer(request):
         }, status=405)
 
 @csrf_exempt
-def update_timer(request):
-        obj = Patient.objects.all()
-        for i in obj:
-            patient_assignment_obj = Patient_Assignments.objects.get(patient=i)
-            total_minutes = patient_assignment_obj.total_minute
-            total_seconds = patient_assignment_obj.total_second
-            if total_seconds==60:
-                total_minutes=total_minutes+1
-                patient_assignment_obj.total_minute=total_minutes
-                patient_assignment_obj.total_second=0
-                patient_assignment_obj.save()
-            else:
-                total_seconds=total_seconds+1
-                patient_assignment_obj.total_second=total_seconds
-                patient_assignment_obj.save()
-            if i.timer_active:
-                if patient_assignment_obj.remaining_minutes>-1:
-                    if patient_assignment_obj.remaining_second==0:
-                        minutes=patient_assignment_obj.remaining_minutes
-                        minutes=minutes-1
-                        patient_assignment_obj.remaining_minutes=minutes
-                        patient_assignment_obj.remaining_second=60
-                        patient_assignment_obj.save()
-                    else:
-                        second=patient_assignment_obj.remaining_second
-                        second=second-1
-                        patient_assignment_obj.remaining_second=second
-                        patient_assignment_obj.save()
-                total_seconds=patient_assignment_obj.remaining_minutes*60+patient_assignment_obj.remaining_second
+def fulltimer(request):
+    obj = Patient.objects.all()
+    for patient in obj:
+        ass = Patient_Assignments.objects.get(patient=patient)
+        seconds = ass.total_second
+        minutes = ass.total_minute
+        seconds += 1
+        if seconds >= 60:
+            seconds = 0
+            minutes += 1
+        ass.total_second = seconds
+        ass.total_minute = minutes
+        ass.save()
+    return JsonResponse({'status': 'Updating'})
 
-                if patient_assignment_obj.progress_bar > 0:
-                    progress = patient_assignment_obj.progress_bar
-                    print("THE TOTAL seconds",total_seconds)
-                    new_var = total_seconds
-                    new_progress = progress
-                    decrement = new_progress / new_var
-                    print("THE TOTAL decrements", decrement)
-                    new_progress = new_progress - decrement
-                    progress = new_progress
-                    print("THE new_progress", new_progress)
-                    patient_assignment_obj.progress_bar = progress
-                    patient_assignment_obj.save()
+import time
+@csrf_exempt
+def update_timer(request):
+    patients = Patient.objects.all().filter(timer_active=True)
+    print("PATIENTS",patients)
+    for patient in patients:
+        try:
+            patient_assignment_obj = Patient_Assignments.objects.get(patient=patient)
+            total_seconds = patient_assignment_obj.total_second + 1
+            if total_seconds == 60:
+                total_minutes = patient_assignment_obj.total_minute + 1
+                patient_assignment_obj.total_minute = total_minutes
+                patient_assignment_obj.total_second = 0
+            else:
+                patient_assignment_obj.total_second = total_seconds
+            if patient.timer_active:
+                if patient_assignment_obj.remaining_second == 0:
+                    patient_assignment_obj.remaining_minutes -= 1
+                    patient_assignment_obj.remaining_second = 59  # Corrected for countdown
                 else:
-                    i.timer_active = False
-                    i.save()
-        return JsonResponse({'status': 'Updating'})
+                    patient_assignment_obj.remaining_second -= 1
+            patient_assignment_obj.save()
+        except Patient_Assignments.DoesNotExist:
+            continue
+    return JsonResponse({'status': 'Updating'})
+
 
 @csrf_exempt
 @api_view(['POST'])

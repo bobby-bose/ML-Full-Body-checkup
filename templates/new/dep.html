@@ -1,0 +1,52 @@
+<!-- department_list.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Department List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Department List</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Remaining Minutes</th>
+                <th>Remaining Seconds</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for department in departments %}
+            <tr>
+                <td>{{ department.name }}</td>
+                <td>{{ department.remaining_minutes }}</td>
+                <td>{{ department.remaining_seconds }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
